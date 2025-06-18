@@ -1,0 +1,2 @@
+# Ignore the temporary Lambda deployment package
+lambda-package/
