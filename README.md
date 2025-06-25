@@ -1,6 +1,6 @@
 # ClassLink Integration Demonstrator
 
-This project is a lightweight, full-stack web application designed to demonstrate a complete, end-to-end integration with the ClassLink ecosystem, as required by the Partner Solutions Engineer internship program.
+This project is a lightweight, full-stack web application designed to demonstrate a complete, end-to-end integration with the ClassLink ecosystem, as required by the internship program.
 
 The core purpose is to showcase three key functionalities:
 
