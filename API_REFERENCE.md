@@ -43,10 +43,3 @@ If the request is successful, the API will return a JSON object with a `200 OK` 
     }
   ]
 }
-
-Error Response (500 Internal Server Error)
-If the Lambda function encounters an issue connecting to or reading from DynamoDB, it will return a 500 status code with a generic error message in the body.
-
-{
-    "body": "Error fetching data from DynamoDB"
-}
