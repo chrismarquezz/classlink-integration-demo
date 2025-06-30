@@ -1,6 +1,6 @@
 # Best Practices for Security and Efficiency
 
-This document outlines the key best practices implemented in this project to ensure the application is secure, efficient, and maintainable.
+This document outlines the key best practices implemented in this project to ensure the application is secure, efficient, and maintainable. These principles are foundational to the application's architecture.
 
 ---
 
@@ -14,10 +14,10 @@ This document outlines the key best practices implemented in this project to ens
 
 ### 2. Principle of Least Privilege
 
-**Practice:** Each AWS Lambda function is assigned an IAM execution role with the minimum permissions necessary for it to function.
+**Practice:** Each AWS Lambda function is assigned an IAM execution role with the minimum permissions necessary for it to function. For example:
 
-* The `classlink-data-ingestion` function has write access to DynamoDB and read access to Secrets Manager.
-* The `classlink-get-data` function has read-only access to DynamoDB.
+* The `classlink-data-ingestion` function is granted write access to DynamoDB and read access to Secrets Manager, but nothing more.
+* The `classlink-get-data` function is only granted read-only access to DynamoDB.
 
 **Benefit:** If a function were ever to be compromised, this principle limits the potential damage. The compromised function could not access or modify other unrelated AWS resources.
 
@@ -41,7 +41,7 @@ This document outlines the key best practices implemented in this project to ens
 
 **Practice:** We use **AWS Lambda** for our backend logic instead of a traditional, always-on server.
 
-**Benefit:** This is highly efficient for both cost and performance.
+**Benefit:** This is highly efficient for both cost and performance:
 
 * **Cost:** You only pay for the compute time when a function is actually running (measured in milliseconds), which is extremely cost-effective for applications with variable traffic.
 * **Scalability:** AWS automatically handles scaling. If thousands of requests come in at once, Lambda will scale out to handle them without any manual intervention.
