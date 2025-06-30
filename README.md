@@ -30,9 +30,10 @@ The backend is the data engine of the project. It consists of several key AWS co
 ### 2. Database
 
 -   **Service:** Amazon DynamoDB
--   **Details:** A NoSQL serverless database used to store our roster information. It requires zero server management and scales automatically. We use two main tables:
+-   **Details:** A NoSQL serverless database used to store our roster information. It requires zero server management and scales automatically. We use **three** main tables:
     -   `Users`: Stores student, teacher, and administrator profiles.
     -   `Enrollments`: Stores the relationships between users and the classes they are in.
+    -   `Classes`: Stores details for each class, such as the class name and course code.
 
 ### 3. Data Serving API
 
