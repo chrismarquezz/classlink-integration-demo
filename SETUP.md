@@ -29,7 +29,7 @@ We need three tables to store our roster data.
     -   **Table 2:**
         -   Table name: `Enrollments`
         -   Partition key: `userId` (Type: String)
-        -   Sort key: `classId` (Type: String)
+        -   **Sort key:** `classId` (Type: String)
     -   **Table 3:**
         -   Table name: `Classes`
         -   Partition key: `classId` (Type: String)
@@ -52,7 +52,7 @@ This function fetches data from ClassLink and populates your database.
 1.  Navigate to the **AWS Lambda** service and click **"Create function"**.
 2.  Configure as follows:
     -   **Function name:** `classlink-data-ingestion`
-    -   **Runtime:** Python (newest version)
+    -   **Runtime:** Python 3.11 (or newer)
 3.  Once created, go to **Configuration > Permissions**. Click the role name to open IAM.
 4.  **Attach Policies:** Attach the following two AWS managed policies to the role:
     -   `AmazonDynamoDBFullAccess`
@@ -72,7 +72,7 @@ This function provides the data to your frontend.
 1.  Navigate to **AWS Lambda** and click **"Create function"**.
 2.  Configure as follows:
     -   **Function name:** `classlink-get-data`
-    -   **Runtime:** Python (newest version)
+    -   **Runtime:** Python 3.11 (or newer)
 3.  Once created, attach the `AmazonDynamoDBReadOnlyAccess` policy to its execution role in IAM.
 4.  **Copy Code:** Go to the Lambda's **Code** tab and paste the code from your project's `backend/get_data/lambda_function.py` file. Click **Deploy**.
 5.  **Add API Gateway Trigger:**
@@ -89,7 +89,7 @@ This function provides the data to your frontend.
 
 1.  **Clone the Repository:**
     ```bash
-    git clone ([https://github.com/chrismarquezz/ClassLink-Internship-Project.git](https://github.com/chrismarquezz/ClassLink-Internship-Project.git))
+    git clone [https://github.com/chrismarquezz/ClassLink-Internship-Project.git](https://github.com/chrismarquezz/ClassLink-Internship-Project.git)
     cd ClassLink-Internship-Project/frontend
     ```
 2.  **Create Environment File:** In the `frontend` directory, create a new file named `.env`.
