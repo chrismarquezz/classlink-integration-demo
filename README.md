@@ -62,4 +62,4 @@ Current Status
 The backend data pipeline and the frontend UI for both student and teacher views are complete. The final implementation of the SSO Authentication flow is the next major step.
 
 Getting Started
-To set up and run this project in your own environment, please follow the instructions in the SETUP.md file.
+To set up and run this project in your own environment, please follow the instructions in the [SETUP.md](https://github.com/chrismarquezz/ClassLink-Internship-Project/blob/sandbox/SETUP.md) file.
