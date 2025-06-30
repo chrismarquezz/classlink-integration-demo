@@ -15,7 +15,7 @@ function ProfileDropdown({ user }) {
         <strong>User ID:</strong> {displayUser.userId}
       </div>
       <div className="dropdown-item">
-        <strong>Role:</strong> {displayUser.role}
+        <strong>Role:</strong> {displayUser.role.charAt(0).toUpperCase() + displayUser.role.slice(1)}
       </div>
       <div className="dropdown-item logout">
         Logout
