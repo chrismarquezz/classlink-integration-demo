@@ -31,8 +31,6 @@ This function demonstrates a critical security best practice. Instead of hardcod
 
 ### Sample 2: Populating DynamoDB Efficiently
 
-### Sample 2: Populating DynamoDB Efficiently
-
 ```python
 import boto3
 
@@ -62,7 +60,6 @@ def lambda_handler(event, context):
 
 **Explanation:**
 This snippet shows how we write a large number of items to DynamoDB. Instead of writing items one by one (which would be slow and inefficient), we use `batch_writer()`. This is a high-level feature of `boto3` that automatically handles the complexity of grouping items into batches, sending them in parallel, and even performing retries for failed items. This is the most efficient and resilient way to perform bulk write operations in DynamoDB. We also use `.get(key, 'N/A')` to gracefully handle cases where an optional field (like `email`) might be missing from a record.
----
 
 ## 2. Frontend: React Application (`App.jsx`)
 
