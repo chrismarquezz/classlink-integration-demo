@@ -1,3 +1,4 @@
+/* --- Base Layout & Full Width Fix --- */
 html, body, #root {
   height: 100%;
   width: 100%;
@@ -17,6 +18,8 @@ body {
     width: 100%;
     min-height: 100%;
 }
+
+/* --- Header & Profile --- */
 
 .dashboard-header {
   display: flex;
@@ -63,6 +66,10 @@ body {
   border-radius: 50%;
   cursor: pointer;
   border: 2px solid #555;
+  background-color: #666;
+  /* Use CSS Grid for robust centering */
+  display: grid;
+  place-items: center;
 }
 
 .profile-dropdown {
@@ -92,6 +99,9 @@ body {
     cursor: pointer;
 }
 
+
+/* --- Main Content & Search --- */
+
 .dashboard-main {
     padding: 24px 48px;
     max-width: 1200px;
@@ -112,6 +122,9 @@ body {
   font-size: 1rem;
   box-sizing: border-box;
 }
+
+
+/* --- Tables & Dashboards --- */
 
 .class-table {
   width: 100%;
@@ -135,20 +148,28 @@ body {
   padding: 16px;
   border-bottom: 1px solid #e5e7eb;
   color: #111827;
+  transition: background-color 0.2s ease-in-out; /* Smooth transition for hover */
 }
 
 .class-table tr:last-child td {
   border-bottom: none;
 }
 
+/* This class makes table rows clickable */
+.clickable-table tbody tr {
+  cursor: pointer;
+}
+
+/* Add a hover effect for clickable rows that are not already selected */
+.clickable-table tbody tr:not(.selected-row):hover {
+  background-color: #f9fafb;
+}
+
+
 .teacher-dashboard {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 24px;
-}
-
-.clickable-table tbody tr {
-  cursor: pointer;
 }
 
 .teacher-dashboard h4 {
@@ -161,6 +182,8 @@ body {
   color: black;
 }
 
+/* --- Status Messages --- */
+
 .error-message {
   color: #ef4444;
 }
@@ -172,12 +195,15 @@ body {
   font-style: italic;
 }
 
+/* Style for the generic <p> tag used for the loading message */
 .dashboard-main > p {
     color: black;
     text-align: center;
     padding: 24px;
     font-size: 1.1rem;
 }
+
+/* --- Modal Styles --- */
 
 .modal-overlay {
   position: fixed;
@@ -197,7 +223,7 @@ body {
   border-radius: 8px;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
   width: 90%;
-  max-width: 600px;
+  max-width: 800px;
   max-height: 80vh;
   display: flex;
   flex-direction: column;

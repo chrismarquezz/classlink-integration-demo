@@ -1,24 +1,29 @@
-function ProfileDropdown({ user }) {
-  const displayUser = user || {
-    firstName: 'Test',
-    lastName: 'User',
-    userId: '12345',
-    role: 'student'
-  };
+import React from 'react';
+
+// This component receives the Amplify user object and an onSignOut function
+function ProfileDropdown({ user, onSignOut }) {
+  if (!user) {
+    return null;
+  }
+
+  // The Amplify user object stores attributes differently.
+  // We access the username directly and other attributes via user.attributes.
+  const email = user.attributes?.email;
+  const username = user.username;
 
   return (
     <div className="profile-dropdown">
       <div className="dropdown-item">
-        <strong>Name:</strong> {displayUser.firstName} {displayUser.lastName}
+        <strong>Username:</strong> {username}
       </div>
-      <div className="dropdown-item">
-        <strong>User ID:</strong> {displayUser.userId}
-      </div>
-      <div className="dropdown-item">
-        <strong>Role:</strong> {displayUser.role.charAt(0).toUpperCase() + displayUser.role.slice(1)}
-      </div>
-      <div className="dropdown-item logout">
-        Logout
+      {email && (
+        <div className="dropdown-item">
+          <strong>Email:</strong> {email}
+        </div>
+      )}
+      {/* The Sign Out button now calls the onSignOut function passed from App.jsx */}
+      <div className="dropdown-item logout" onClick={onSignOut}>
+        Sign Out
       </div>
     </div>
   );
