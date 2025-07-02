@@ -17,21 +17,27 @@ This document outlines the key best practices implemented in this project to ens
 **Practice:** Each AWS Lambda function is assigned an IAM execution role with the minimum permissions necessary for it to function. For example:
 
 * The `classlink-data-ingestion` function is granted write access to DynamoDB and read access to Secrets Manager, but nothing more.
-* The `classlink-get-data` function is only granted read-only access to DynamoDB.
+* The `get-user-specific-data` function is only granted read-only access to DynamoDB.
 
 **Benefit:** If a function were ever to be compromised, this principle limits the potential damage. The compromised function could not access or modify other unrelated AWS resources.
 
-### 3. Separation of Concerns
+### 3. Secure API Gateway with JWT Authorizer
+
+**Practice:** The data-serving API endpoint is protected by an **API Gateway JWT Authorizer**. This authorizer is configured to trust our AWS Cognito User Pool.
+
+**Benefit:** This ensures that only authenticated users with a valid, unexpired ID Token from a successful login can access the backend data API. Any unauthenticated requests are rejected at the gateway level before they can even reach our Lambda function, providing a robust and standard layer of security.
+
+### 4. Separation of Concerns
 
 **Practice:** The application is architecturally separated into a distinct backend (AWS services) and frontend (React SPA). The frontend never communicates directly with the database.
 
 **Benefit:** This prevents any direct exposure of the database to the public internet. All data access must go through the controlled, secure API Gateway endpoint, which provides a single point of entry that can be monitored and secured.
 
-### 4. Use of Environment Variables on the Frontend
+### 5. Use of Environment Variables on the Frontend
 
 **Practice:** The frontend React application uses a `.env` file to store its configuration, such as the backend API URL. This file is included in `.gitignore`.
 
-**Benefit:** This prevents environment-specific details from being hardcoded into the application, making it easy to point the frontend to different backend environments (e.g., development, staging, production) without changing the source code.
+**Benefit:** This prevents environment-specific details from being hardcoded into the application, making it easy to point the frontend to different backend environments without changing the source code.
 
 ---
 
@@ -49,12 +55,12 @@ This document outlines the key best practices implemented in this project to ens
 
 ### 2. Component-Based UI
 
-**Practice:** The React frontend is broken down into small, reusable components (`StudentDashboard`, `TeacherDashboard`, `ProfileDropdown`).
+**Practice:** The React frontend is broken down into small, reusable components (`StudentDashboard`, `TeacherDashboard`, `ProfileDropdown`, `Modal`).
 
 **Benefit:** This makes the code easier to understand, debug, and maintain. Each component has a single responsibility, and changes to one component are less likely to break another. This modularity is a core principle of modern web development.
 
-### 3. Centralized Data Fetching
+### 3. User-Specific Data Fetching
 
-**Practice:** All data fetching and processing logic is centralized in the main `App.jsx` component. Child components (`StudentDashboard`, etc.) receive data as props.
+**Practice:** After a user authenticates, the frontend calls a secure API that returns only the data relevant to that specific user, rather than fetching the entire database.
 
-**Benefit:** This creates a clear and predictable data flow. It's easy to see where the data comes from and how it's passed through the application, which simplifies debugging and state management.
+**Benefit:** This is highly efficient. It minimizes the amount of data transferred over the network and reduces the amount of data processing that needs to happen on the frontend, leading to a faster and more responsive user experience.
