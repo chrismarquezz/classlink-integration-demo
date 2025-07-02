@@ -10,19 +10,21 @@ function StudentDashboard({ classData, searchTerm }) {
         </tr>
       </thead>
       <tbody>
-        {classData.length === 0 && searchTerm ? (
-          <tr>
-            <td colSpan="2" className="no-results">
-              No classes found matching "{searchTerm}"
-            </td>
-          </tr>
-        ) : (
+        {classData.length > 0 ? (
           classData.map(c => (
             <tr key={c.key}>
               <td>{c.className}</td>
               <td>{c.teacherName}</td>
             </tr>
           ))
+        ) : (
+          <tr>
+            <td colSpan="2" className="no-results">
+              {searchTerm
+                ? `No classes found matching "${searchTerm}"`
+                : "You are not currently enrolled in any classes."}
+            </td>
+          </tr>
         )}
       </tbody>
     </table>

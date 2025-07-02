@@ -1,8 +1,16 @@
 import React, { useState } from 'react';
 import Modal from './Modal';
 
-function TeacherDashboard({ classData, allUsers, allEnrollments }) {
+function TeacherDashboard({ classData, allUsers, allEnrollments, searchTerm }) {
   const [rosterClass, setRosterClass] = useState(null);
+
+  const handleClassClick = (classInfo) => {
+    setRosterClass(classInfo);
+  };
+
+  const closeRoster = () => {
+    setRosterClass(null);
+  };
 
   const getStudentsForClass = (classId) => {
     return allEnrollments
@@ -12,17 +20,9 @@ function TeacherDashboard({ classData, allUsers, allEnrollments }) {
         return studentInfo || { userId: enrollment.userId, firstName: 'Unknown', lastName: 'Student' };
       });
   };
-
-  const handleClassClick = (classInfo) => {
-    setRosterClass(classInfo);
-  };
-
-  const closeRoster = () => {
-    setRosterClass(null);
-  };
   
   const rosterStudents = rosterClass ? getStudentsForClass(rosterClass.classId) : [];
-
+  
   return (
     <>
       <div className="teacher-class-list">
@@ -35,16 +35,26 @@ function TeacherDashboard({ classData, allUsers, allEnrollments }) {
             </tr>
           </thead>
           <tbody>
-            {classData.map(c => (
-              <tr 
-                key={c.key} 
-                onClick={() => handleClassClick(c)}
-                className={rosterClass?.classId === c.classId ? 'selected-row' : ''}
-              >
-                <td>{c.className}</td>
-                <td>{c.classId}</td>
+            {classData.length > 0 ? (
+              classData.map(c => (
+                <tr 
+                  key={c.key} 
+                  onClick={() => handleClassClick(c)}
+                  className={rosterClass?.classId === c.classId ? 'selected-row' : ''}
+                >
+                  <td>{c.className}</td>
+                  <td>{c.classId}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="2" className="no-results">
+                  {searchTerm
+                    ? `No classes found matching "${searchTerm}"`
+                    : "You are not currently assigned to any classes."}
+                </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
