@@ -1,6 +1,6 @@
 # ClassLink Integration Demonstrator
 
-This project is a lightweight, full-stack web application designed to demonstrate a complete, end-to-end integration with the ClassLink ecosystem, as required by the internship program.
+This project is a lightweight, full-stack web application designed to demonstrate a complete, end-to-end integration with the ClassLink ecosystem.
 
 ## Core Purpose
 
@@ -8,13 +8,13 @@ The goal is to showcase three key functionalities:
 
 -   **Data Ingestion & Provisioning:** Connect to the ClassLink Roster Server API, fetch user, class, and enrollment data, and provision it into a cloud database.
 -   **SSO Authentication:** Implement Single Sign-On (SSO) using industry-standard protocols like OAuth2 and OIDC, allowing users to sign in with their existing ClassLink credentials.
--   **User-Facing Application:** A functional web interface that displays roster data in a meaningful way, with different views for different user roles.
+-   **User-Facing Application:** A functional web interface that displays roster data in a dashboard format, with different views for different user roles.
 
 ## Architecture Overview
 
 This application is built using a modern, **serverless architecture** on Amazon Web Services (AWS). This approach is scalable, cost-effective, and minimizes infrastructure management. The system is split into two distinct parts: a backend API and a frontend user interface.
 
--   **Backend:** A set of cloud functions and services responsible for all data handling.
+-   **Backend:** A set of cloud functions and services responsible for all data handling and authentication.
 -   **Frontend:** A separate Single-Page Application (SPA) that runs in the user's web browser and communicates with the backend via a secure HTTP API.
 
 ---
@@ -37,12 +37,13 @@ The backend is the data engine of the project. It consists of several key AWS co
     -   `Classes`: Stores details for each class, such as the class name.
     -   `Enrollments`: Stores the relationships between users and classes.
 
-### 3. Data Serving API
+### 3. Authentication & Secure API
 
--   **Services:** AWS Lambda (`classlink-get-data`) & Amazon API Gateway
--   **Function:** This combination provides the bridge between our database and the frontend.
-    -   **API Gateway** provides a simple, public, read-only HTTP endpoint. It is configured with CORS to securely grant our frontend permission to access the API.
-    -   When a request hits the endpoint, it triggers the `classlink-get-data` Lambda function, which scans the DynamoDB tables and returns the roster data as a single JSON object.
+-   **Services:** AWS Cognito, AWS Lambda (`get-user-specific-data`), & Amazon API Gateway
+-   **Function:** This is the core of our secure data flow.
+    -   **AWS Cognito** acts as our identity broker. It is configured with a User Pool and an OIDC Identity Provider to manage the SSO handshake with ClassLink.
+    -   **API Gateway** provides a secure HTTP endpoint that is protected by a **JWT Authorizer**. This authorizer automatically validates the ID Token sent from the frontend, ensuring only authenticated users can access the API.
+    -   When a valid request is received, it triggers the `get-user-specific-data` Lambda function. This function uses the user's ID from the validated token to query DynamoDB and return only the data relevant to that specific user.
 
 ---
 
@@ -54,7 +55,8 @@ The frontend is the visible part of the application that a user interacts with.
 
 -   **Framework:** React
 -   **Build Tool:** Vite
--   **Description:** We built a modern Single-Page Application using React, the industry-standard library for building component-based user interfaces. Vite provides a fast and efficient development experience.
+-   **Authentication Library:** AWS Amplify
+-   **Description:** We built a modern Single-Page Application using React. The AWS Amplify library is used to handle the entire user authentication lifecycle, including redirecting to the ClassLink SSO page, managing user sessions, and retrieving secure tokens for API calls.
 
 ---
 
@@ -62,7 +64,7 @@ The frontend is the visible part of the application that a user interacts with.
 
 ### Current Status
 
-The backend data pipeline and the frontend UI for both student and teacher views are complete. The final implementation of the SSO Authentication flow is the next major step.
+The backend data pipeline, frontend UI, and the end-to-end SSO authentication flow are all complete and functional.
 
 ### Getting Started
 
