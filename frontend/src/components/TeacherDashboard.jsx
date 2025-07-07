@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Modal from './Modal';
 
-function TeacherDashboard({ classData, allUsers, allEnrollments, searchTerm }) {
+function TeacherDashboard({ teacherData }) {
   const [rosterClass, setRosterClass] = useState(null);
 
   const handleClassClick = (classInfo) => {
@@ -11,17 +11,6 @@ function TeacherDashboard({ classData, allUsers, allEnrollments, searchTerm }) {
   const closeRoster = () => {
     setRosterClass(null);
   };
-
-  const getStudentsForClass = (classId) => {
-    return allEnrollments
-      .filter(e => e.classId === classId && e.role === 'student')
-      .map(enrollment => {
-        const studentInfo = allUsers.find(u => u.userId === enrollment.userId);
-        return studentInfo || { userId: enrollment.userId, firstName: 'Unknown', lastName: 'Student' };
-      });
-  };
-  
-  const rosterStudents = rosterClass ? getStudentsForClass(rosterClass.classId) : [];
   
   return (
     <>
@@ -35,10 +24,10 @@ function TeacherDashboard({ classData, allUsers, allEnrollments, searchTerm }) {
             </tr>
           </thead>
           <tbody>
-            {classData.length > 0 ? (
-              classData.map(c => (
+            {teacherData.classes.length > 0 ? (
+              teacherData.classes.map(c => (
                 <tr 
-                  key={c.key} 
+                  key={c.classId} 
                   onClick={() => handleClassClick(c)}
                   className={rosterClass?.classId === c.classId ? 'selected-row' : ''}
                 >
@@ -47,11 +36,9 @@ function TeacherDashboard({ classData, allUsers, allEnrollments, searchTerm }) {
                 </tr>
               ))
             ) : (
-              <tr>
+               <tr>
                 <td colSpan="2" className="no-results">
-                  {searchTerm
-                    ? `No classes found matching "${searchTerm}"`
-                    : "You are not currently assigned to any classes."}
+                  You are not currently assigned to any classes.
                 </td>
               </tr>
             )}
@@ -72,10 +59,10 @@ function TeacherDashboard({ classData, allUsers, allEnrollments, searchTerm }) {
             </tr>
           </thead>
           <tbody>
-            {rosterStudents.length > 0 ? (
-              rosterStudents.map(student => (
+            {rosterClass?.roster?.length > 0 ? (
+              rosterClass.roster.map(student => (
                 <tr key={student.userId}>
-                  <td>{student.firstName} {student.lastName}</td>
+                  <td>Student {student.userId}</td>
                   <td>{student.userId}</td>
                 </tr>
               ))
