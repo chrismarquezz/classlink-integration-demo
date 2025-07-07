@@ -1,28 +1,26 @@
 import React from 'react';
 
-function StudentDashboard({ classData, searchTerm }) {
+function StudentDashboard({ studentData }) {
   return (
     <table className="class-table">
       <thead>
         <tr>
           <th>Class Name</th>
-          <th>Teacher</th>
+          <th>Class ID</th>
         </tr>
       </thead>
       <tbody>
-        {classData.length > 0 ? (
-          classData.map(c => (
-            <tr key={c.key}>
+        {studentData.classes.length > 0 ? (
+          studentData.classes.map(c => (
+            <tr key={c.classId}>
               <td>{c.className}</td>
-              <td>{c.teacherName}</td>
+              <td>{c.classId}</td>
             </tr>
           ))
         ) : (
           <tr>
             <td colSpan="2" className="no-results">
-              {searchTerm
-                ? `No classes found matching "${searchTerm}"`
-                : "You are not currently enrolled in any classes."}
+              You are not currently enrolled in any classes.
             </td>
           </tr>
         )}
