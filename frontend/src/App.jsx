@@ -55,16 +55,21 @@ function App() {
       setLoading(true);
       try {
         const session = await fetchAuthSession();
-        const idToken = session.tokens?.idToken?.toString();
-        if (!idToken) throw new Error("User is not authenticated.");
+        const accessToken = session.tokens?.accessToken?.toString();
+console.log("Access Token:", accessToken);
 
-        const response = await fetch(API_URL, {
-          headers: { Authorization: `Bearer ${idToken}` }
-        });
+if (!accessToken) throw new Error("User is not authenticated.");
+
+const response = await fetch(API_URL, {
+  headers: { Authorization: `Bearer ${accessToken}` }
+});
+
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
         const data = await response.json();
         setDashboardData(data);
+        // Log user ID here
+      console.log("User ID from API:", data.userProfile?.userId);
         setError(null);
       } catch (e) {
         setError(e.message);
