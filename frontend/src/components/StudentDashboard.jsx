@@ -1,6 +1,8 @@
 import React from 'react';
 
 function StudentDashboard({ studentData }) {
+  const classes = studentData?.classes || [];
+
   return (
     <table className="class-table">
       <thead>
@@ -10,8 +12,8 @@ function StudentDashboard({ studentData }) {
         </tr>
       </thead>
       <tbody>
-        {studentData.classes.length > 0 ? (
-          studentData.classes.map(c => (
+        {classes.length > 0 ? (
+          classes.map(c => (
             <tr key={c.classId}>
               <td>{c.className}</td>
               <td>{c.classId}</td>
