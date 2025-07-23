@@ -8,12 +8,11 @@ import { Amplify } from 'aws-amplify';
 const amplifyConfig = {
   Auth: {
     Cognito: {
-      userPoolId: 'us-east-1_d1sfPaYBB',
-      userPoolClientId: '4v37u1m7i7t675ms2pgt9p5je9',
+      userPoolId: 'us-east-1_0VYziM7It',
+      userPoolClientId: '2s9aedlljf2jhfav0up5d7b23d',
       loginWith: {
         oauth: {
-          domain: 'us-east-1d1sfpaybb.auth.us-east-1.amazoncognito.com',
-          // FIX: Request only the 'openid' scope
+          domain: 'us-east-10vyzim7it.auth.us-east-1.amazoncognito.com',
           scopes: ['openid'],
           redirectSignIn: ['http://localhost:5173'],
           redirectSignOut: ['http://localhost:5173'],
