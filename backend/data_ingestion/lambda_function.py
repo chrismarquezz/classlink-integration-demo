@@ -8,93 +8,111 @@ users_table = dynamodb.Table('Users')
 enrollments_table = dynamodb.Table('Enrollments')
 classes_table = dynamodb.Table('Classes')
 
-def get_api_details():
-    """Retrieves API details from AWS Secrets Manager."""
+def get_api_credentials():
     secret_name = "classlink-api-credentials"
-    print("Getting API details from Secrets Manager...")
     response = secrets_manager.get_secret_value(SecretId=secret_name)
     secret = json.loads(response['SecretString'])
-    print("API details retrieved successfully.")
-    return secret['base_url'], secret['access_token']
+    return secret['base_url'], secret['admin_api_key']
 
-def fetch_data(base_url, access_token, endpoint, limit=500):
-    """Fetches a specified number of records from a given API endpoint."""
-    url = f"{base_url}{endpoint}?limit={limit}"
-    print(f"Requesting data from: {url}")
-    
-    headers = {
-        'Authorization': f'Bearer {access_token}'
-    }
-    
-    response = requests.get(url, headers=headers, timeout=60)
-    response.raise_for_status() 
-    
-    print(f"Successfully fetched data for endpoint: {endpoint}")
+def fetch_with_bearer(base_url, bearer_token, endpoint, limit=500):
+    full_url = f"{base_url}{endpoint}?limit={limit}"
+    headers = {'Authorization': f'Bearer {bearer_token}'}
+    response = requests.get(full_url, headers=headers, timeout=60)
+    response.raise_for_status()
     return response.json()
 
-def lambda_handler(event, context):
-    """
-    Fetches data from the ClassLink API and populates the Users, Enrollments,
-    and Classes tables in DynamoDB.
-    """
-    try:
-        base_url, access_token = get_api_details()
+def clear_table(table, key_names):
+    scan = table.scan(ProjectionExpression=', '.join(key_names))
+    with table.batch_writer() as batch:
+        for item in scan.get('Items', []):
+            batch.delete_item(Key={k: item[k] for k in key_names})
 
-        users_response = fetch_data(base_url, access_token, '/users', limit=500)
-        users_data = users_response.get('users', [])
-        print(f"Populating {len(users_data)} users into DynamoDB...")
+def lambda_handler(event, context):
+    try:
+        base_url, admin_api_key = get_api_credentials()
+
+        apps_url = f"{base_url}/applications"
+        headers = {'Authorization': f'Bearer {admin_api_key}'}
+        apps_response = requests.get(apps_url, headers=headers, timeout=30)
+        apps_response.raise_for_status()
+        apps = apps_response.json().get('applications', [])
+
+        if len(apps) < 3:
+            raise Exception("Less than 3 applications available.")
+
+        app = apps[2]
+        oneroster_app_id = app.get('oneroster_application_id')
+        tenant_id = app.get('tenant_id')
+        bearer_token = app.get('bearer')
+
+        if not oneroster_app_id or not tenant_id or not bearer_token:
+            raise Exception("Missing oneroster_application_id, tenant_id, or bearer token in 3rd application.")
+
+        base_api_path = f"/{oneroster_app_id}/ims/oneroster/v1p1"
+
+        users_endpoint = f"{base_api_path}/users"
+        users_data = fetch_with_bearer(base_url, bearer_token, users_endpoint, limit=2000).get('users', [])
+
+        clear_table(users_table, ['userId'])
         with users_table.batch_writer() as batch:
             for user in users_data:
-                if user.get('sourcedId') and user.get('role'):
+                sourced_id = user.get('sourcedId')
+                status = user.get('status', '').lower()
+                if sourced_id and user.get('role') and status == 'active':
+                    composite_user_id = f"{tenant_id}_{sourced_id}"
                     batch.put_item(
                         Item={
-                            'userId': user.get('sourcedId'),
+                            'userId': composite_user_id,
+                            'sourcedId': sourced_id,
+                            'tenantId': tenant_id,
                             'role': user.get('role'),
                             'firstName': user.get('givenName', 'N/A'),
-                            'lastName': user.get('familyName', 'N/A'),
-                            'email': user.get('email', 'N/A')
+                            'lastName': user.get('familyName', 'N/A')
                         }
                     )
-        print("Users table populated.")
 
-        enrollments_response = fetch_data(base_url, access_token, '/enrollments', limit=500)
-        enrollments_data = enrollments_response.get('enrollments', [])
-        print(f"Populating {len(enrollments_data)} enrollments into DynamoDB...")
+        enrollments_endpoint = f"{base_api_path}/enrollments"
+        enrollments_data = fetch_with_bearer(base_url, bearer_token, enrollments_endpoint, limit=1000).get('enrollments', [])
+
+        clear_table(enrollments_table, ['userId', 'classId'])
         with enrollments_table.batch_writer() as batch:
             for enrollment in enrollments_data:
-                user_id = enrollment.get('user', {}).get('sourcedId')
+                user_sourced_id = enrollment.get('user', {}).get('sourcedId')
                 class_id = enrollment.get('class', {}).get('sourcedId')
-                if user_id and class_id:
+                if user_sourced_id and class_id:
+                    composite_user_id = f"{tenant_id}_{user_sourced_id}"
                     batch.put_item(
                         Item={
-                            'userId': user_id,
+                            'userId': composite_user_id,
                             'classId': class_id,
                             'role': enrollment.get('role', 'N/A')
                         }
                     )
-        print("Enrollments table populated.")
 
-        classes_response = fetch_data(base_url, access_token, '/classes', limit=500)
-        classes_data = classes_response.get('classes', [])
-        print(f"Populating {len(classes_data)} classes into DynamoDB...")
+        classes_endpoint = f"{base_api_path}/classes"
+        classes_data = fetch_with_bearer(base_url, bearer_token, classes_endpoint, limit=1000).get('classes', [])
+
+        clear_table(classes_table, ['classId'])
         with classes_table.batch_writer() as batch:
             for course in classes_data:
-                if course.get('sourcedId'):
+                sourced_id = course.get('sourcedId')
+                if sourced_id:
                     batch.put_item(
                         Item={
-                            'classId': course.get('sourcedId'),
+                            'classId': sourced_id,
                             'className': course.get('title', 'N/A'),
                             'courseCode': course.get('courseCode', 'N/A')
                         }
                     )
-        print("Classes table populated.")
 
+        return {
+            'statusCode': 200,
+            'body': json.dumps('Data ingestion successful!')
+        }
 
-        return {'statusCode': 200, 'body': json.dumps('Data ingestion successful!')}
-
-    except requests.exceptions.HTTPError as http_err:
-        print(f"An HTTP error occurred: {http_err}")
-        return {'statusCode': 500, 'body': json.dumps(f"An HTTP error occurred: {str(http_err)}")}
     except Exception as e:
-        print(f"An error occurred: {e}")
-        return {'statusCode': 500, 'body': json.dumps(f"An error occurred: {str(e)}")}
+        print(f"Error in lambda_handler: {e}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)})
+        }
