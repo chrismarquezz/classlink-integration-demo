@@ -2,70 +2,104 @@
 
 This project is a lightweight, full-stack web application designed to demonstrate a complete, end-to-end integration with the ClassLink ecosystem.
 
+---
+
 ## Core Purpose
 
 The goal is to showcase three key functionalities:
 
--   **Data Ingestion & Provisioning:** Connect to the ClassLink Roster Server API, fetch user, class, and enrollment data, and provision it into a cloud database.
--   **SSO Authentication:** Implement Single Sign-On (SSO) using industry-standard protocols like OAuth2 and OIDC, allowing users to sign in with their existing ClassLink credentials.
--   **User-Facing Application:** A functional web interface that displays roster data in a dashboard format, with different views for different user roles.
+- **Data Ingestion & Provisioning:** Connect to the ClassLink Roster Server API, fetch user, class, and enrollment data in batches, and provision it into a cloud database.
+- **SSO Authentication:** Implement Single Sign-On (SSO) using OAuth2 and OIDC, allowing users to sign in with their ClassLink credentials through LaunchPad.
+- **User-Facing Application:** A functional web interface that displays roster data in a dashboard format, with different views for different user roles.
+
+---
 
 ## Architecture Overview
 
-This application is built using a modern, **serverless architecture** on Amazon Web Services (AWS). This approach is scalable, cost-effective, and minimizes infrastructure management. The system is split into two distinct parts: a backend API and a frontend user interface.
+This application is built using a **serverless architecture** on Amazon Web Services (AWS), designed for scalability and minimal infrastructure management. The system is split into two parts:
 
--   **Backend:** A set of cloud functions and services responsible for all data handling and authentication.
--   **Frontend:** A separate Single-Page Application (SPA) that runs in the user's web browser and communicates with the backend via a secure HTTP API.
+- **Backend:** A set of cloud functions and services for data handling and authentication.
+- **Frontend:** A React-based Single Page Application (SPA) that interacts with the backend via secure HTTP APIs.
 
 ---
 
 ## Backend Components
 
-The backend is the data engine of the project. It consists of several key AWS components working together:
+### 1. Data Ingestion Pipeline
 
-### 1. Data Ingestion
+- **Service:** AWS Lambda (`classlink-data-ingestion`)
+- **Runtime:** Python
+- **Functionality:**
+  - Retrieves ClassLink API credentials from **AWS Secrets Manager**.
+  - Authenticates with ClassLink using `/applications` to obtain a **Bearer token** for a specific application.
+  - Uses this token to fetch **paginated** user, class, and enrollment data from ClassLink's Roster Server API.
+  - Supports **offset-based paging** to ingest data in chunks (e.g., 1000 users at a time).
+  - Inserts the ingested data into **DynamoDB**.
 
--   **Service:** AWS Lambda (`classlink-data-ingestion`)
--   **Runtime:** Python
--   **Function:** This serverless function acts as our primary data-syncing tool. It securely retrieves API credentials from **AWS Secrets Manager**, makes authenticated requests to the ClassLink Roster Server API, fetches data, and populates our DynamoDB tables.
+#### Pagination Example:
+To ingest users in batches:
+
+`GET /v2/users?limit=1000&offset=0`
+`GET /v2/users?limit=1000&offset=1000`
+`GET /v2/users?limit=1000&offset=2000`
+
+
+The `offset` tells the API where to start returning results from. For example, `offset=1000` skips the first 1000 users.
+
+---
 
 ### 2. Database
 
--   **Service:** Amazon DynamoDB
--   **Details:** A NoSQL serverless database used to store our roster information. It requires zero server management and scales automatically. We use **three** main tables:
-    -   `Users`: Stores student, teacher, and administrator profiles.
-    -   `Classes`: Stores details for each class, such as the class name.
-    -   `Enrollments`: Stores the relationships between users and classes.
+- **Service:** Amazon DynamoDB
+- **Tables:**
+  - `Users`: Stores student, teacher, and administrator profiles.
+  - `Classes`: Stores class metadata (e.g., name, teacher).
+  - `Enrollments`: Maps users to classes.
+
+DynamoDB provides a flexible, serverless NoSQL database that scales on demand and integrates easily with Lambda.
+
+---
 
 ### 3. Authentication & Secure API
 
--   **Services:** AWS Cognito, AWS Lambda (`get-user-specific-data`), & Amazon API Gateway
--   **Function:** This is the core of our secure data flow.
-    -   **AWS Cognito** acts as our identity broker. It is configured with a User Pool and an OIDC Identity Provider to manage the SSO handshake with ClassLink.
-    -   **API Gateway** provides a secure HTTP endpoint that is protected by a **JWT Authorizer**. This authorizer automatically validates the ID Token sent from the frontend, ensuring only authenticated users can access the API.
-    -   When a valid request is received, it triggers the `get-user-specific-data` Lambda function. This function uses the user's ID from the validated token to query DynamoDB and return only the data relevant to that specific user.
+- **Services:** AWS Cognito, Amazon API Gateway, AWS Lambda (`get-user-data`)
+- **Functionality:**
+  - **AWS Cognito** handles SSO login via ClassLink using an **OIDC Identity Provider** and a configured **User Pool**.
+  - **API Gateway** acts as the secure interface for frontend-to-backend communication, protected with a **JWT authorizer** using Cognito-issued tokens.
+  - Upon successful authentication, Cognito redirects back to a predefined frontend URL with an authorization code. AWS Amplify exchanges this for a token.
+  - Authenticated API calls pass the **JWT** token in headers to API Gateway, which triggers the `get-user-data` Lambda to return personalized data from DynamoDB.
 
 ---
 
 ## Frontend Components
 
-The frontend is the visible part of the application that a user interacts with.
+### 1. Technology Stack
 
-### 1. Technology
+- **Framework:** React
+- **Build Tool:** Vite
+- **Auth Library:** AWS Amplify
+- **Routing:** React Router DOM
 
--   **Framework:** React
--   **Build Tool:** Vite
--   **Authentication Library:** AWS Amplify
--   **Description:** We built a modern Single-Page Application using React. The AWS Amplify library is used to handle the entire user authentication lifecycle, including redirecting to the ClassLink SSO page, managing user sessions, and retrieving secure tokens for API calls.
+### 2. Key Features
+
+- Implements **SSO login** by redirecting users to ClassLink LaunchPad.
+- After successful login, users are redirected **back to the app (localhost or hosted domain)** using the Cognito callback URL (e.g., `http://localhost:3000/`).
+- The user's session and tokens are managed automatically by AWS Amplify.
+- Uses secure **authenticated API requests** to retrieve only the current user’s roster data.
 
 ---
 
-## Project Status & Getting Started
+## API Authentication Flow (SSO)
 
-### Current Status
+1. **User clicks "Sign in with ClassLink"** in the frontend.
+2. Redirected to AWS Cognito hosted UI → OIDC provider → ClassLink LaunchPad.
+3. User authenticates with ClassLink.
+4. On success, user is redirected **back to the frontend** (e.g., `http://localhost:3000`) with an **authorization code**.
+5. AWS Amplify uses the code to retrieve tokens and store them in session.
+6. Authenticated API calls (e.g., `/get-user-data`) use the token in headers.
 
-The backend data pipeline, frontend UI, and the end-to-end SSO authentication flow are all complete and functional.
+---
 
-### Getting Started
+## Getting Started
 
-To set up and run this project in your own environment, please follow the instructions in the [**SETUP.md**](./SETUP.md) file.
+To run this project locally or deploy it in your own AWS environment, see [**SETUP.md**](./SETUP.md) for installation, environment variables, and infrastructure configuration instructions.
