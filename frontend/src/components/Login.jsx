@@ -1,7 +1,28 @@
 import React from 'react';
-import { signInWithRedirect } from 'aws-amplify/auth';
 
 function Login() {
+  const handleLogin = () => {
+    // These are the parameters for the Cognito Authorization URL.
+    // They must match the configuration of your App Client.
+    const cognitoDomain = 'https://us-east-10vyzim7it.auth.us-east-1.amazoncognito.com';
+    const clientId = '2s9aedlljf2jhfav0up5d7b23d'; // Your App Client ID
+    const redirectUri = 'http://localhost:5173';
+    const scope = 'openid'; // The scope we confirmed works
+    const responseType = 'code';
+    const provider = 'ClassLink'; // The exact name of our Identity Provider
+
+    // Construct the full URL for the Cognito Hosted UI
+    const authorizationUrl = 
+      `${cognitoDomain}/oauth2/authorize?identity_provider=${provider}` +
+      `&client_id=${clientId}` +
+      `&response_type=${responseType}` +
+      `&scope=${scope}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}`;
+
+    // Redirect the user's browser to the login page
+    window.location.href = authorizationUrl;
+  };
+
   return (
     <div className="login-page-container">
       <div className="login-branding-panel">
@@ -17,11 +38,11 @@ function Login() {
       </div>
       <div className="login-form-panel">
         <div className="login-box">
-          <h1>Welcome</h1>
-          <p>Please click the button below to continue.</p>
+          <h1>Welcome Back</h1>
+          <p>Please sign in with your provider to continue.</p>
           <button 
             className="login-button"
-            onClick={() => signInWithRedirect({ provider: { custom: 'ClassLink' } })}
+            onClick={handleLogin}
           >
             Sign in with ClassLink
           </button>
