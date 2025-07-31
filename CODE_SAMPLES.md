@@ -6,7 +6,7 @@ This document highlights key code snippets from the project and explains their p
 
 ## 1. Backend: Data Ingestion Lambda (`classlink-data-ingestion`)
 
-This serverless function is responsible for populating our database with data from the ClassLink API.
+This serverless function is responsible for populating the database with data from the ClassLink Roster Server API.
 
 ### Sample 1: Securely Fetching API Credentials
 
@@ -26,8 +26,10 @@ def get_api_details():
     return secret['base_url'], secret['access_token']
 ```
 
-**Explanation:**
-This function demonstrates a critical security best practice. Instead of hardcoding the API `access_token` or `base_url` in the source code, it retrieves them at runtime from **AWS Secrets Manager**. The `boto3` library (the AWS SDK for Python) is used to make a secure call to the Secrets Manager service. The function's IAM role grants it permission to perform this action. This ensures that sensitive credentials are never exposed in the source code repository.
+**Explanation:**  
+This function demonstrates a critical security best practice. Instead of hardcoding the API `access_token` or `base_url` in the source code, it retrieves them at runtime from **AWS Secrets Manager**. The `boto3` library (the AWS SDK for Python) is used to make a secure call to Secrets Manager. The function's IAM role grants it permission to perform this action, ensuring that credentials are kept safe and out of version control.
+
+---
 
 ### Sample 2: Populating DynamoDB Efficiently
 
@@ -55,87 +57,142 @@ def lambda_handler(event, context):
                     }
                 )
     print("Users table populated.")
-    # ...
 ```
 
-**Explanation:**
-This snippet shows how we write a large number of items to DynamoDB. Instead of writing items one by one (which would be slow and inefficient), we use `batch_writer()`. This is a high-level feature of `boto3` that automatically handles the complexity of grouping items into batches, sending them in parallel, and even performing retries for failed items. This is the most efficient and resilient way to perform bulk write operations in DynamoDB. We also use `.get(key, 'N/A')` to gracefully handle cases where an optional field (like `email`) might be missing from a record.
+**Explanation:**  
+This snippet uses DynamoDB’s `batch_writer()` to efficiently insert multiple user records in one operation. It automatically handles retries and batch size limits under the hood. Optional fields like `firstName` or `email` are safely handled with `.get(..., 'N/A')` in case they're missing from the API response. This improves robustness and prevents crashes on missing data.
 
-## 2. Frontend: React Application (`App.jsx`)
+---
 
-The main `App.jsx` component is the controller for the entire frontend application.
+## 2. Backend: Authentication + Roster Retrieval Lambda (`get-user-data`)
 
-### Sample 3: Fetching Data and Handling State
+This function handles the ClassLink OAuth flow and returns user-specific class and enrollment data.
 
-```jsx
-import { useState, useEffect } from 'react';
+### Sample 3: Exchanging Code for Token and Fetching User Info
 
-function App() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [dashboardData, setDashboardData] = useState({ /* ... */ });
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const API_URL = import.meta.env.VITE_API_URL;
-        const response = await fetch(API_URL);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        processData(data); // A separate function to handle business logic
-      } catch (e) {
-        setError(e.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []); // The empty dependency array [] ensures this runs only once.
-  
-  // ...
-}
-```
-
-**Explanation:**
-This snippet demonstrates the modern way to handle data fetching and component state in React using **hooks**.
--   `useState`: We declare state variables to track the `loading` status, any `error` messages, and the final `dashboardData`. When these state variables are updated (e.g., `setLoading(false)`), React automatically re-renders the component to reflect the new state.
--   `useEffect`: This hook is used to perform "side effects," such as fetching data. The code inside `useEffect` runs after the component has rendered. By providing an empty dependency array (`[]`), we tell React to run this effect only once when the component first mounts, which is the perfect place to fetch our initial data.
--   `import.meta.env.VITE_API_URL`: We securely access our API endpoint URL from an environment variable rather than hardcoding it.
-
-### Sample 4: Conditional Rendering Based on State
-
-```jsx
-function App() {
-  // ... state and data fetching logic ...
-
-  const renderDashboard = () => {
-    if (!loggedInUser) return null;
-
-    if (loggedInUser.role === 'teacher') {
-      return <TeacherDashboard {...dashboardData} />;
-    }
+```python
+def get_access_token(code, client_id, client_secret):
+    token_url = "https://launchpad.classlink.com/oauth2/v2/token"
+    redirect_uri = "http://localhost:5173/callback"
     
-    return <StudentDashboard classData={dashboardData.classData} />;
+    payload = {
+        'code': code,
+        'client_id': client_id,
+        'client_secret': client_secret,
+        'grant_type': 'authorization_code',
+        'launch_url': f"https://launchpad.classlink.com/oauth2/v2/auth?redirect_uri={redirect_uri}"
+    }
+
+    response = requests.post(token_url, data=payload)
+    response.raise_for_status()
+    return response.json()['access_token']
+
+def get_user_info(access_token):
+    headers = {'Authorization': f'Bearer {access_token}'}
+    response = requests.get("https://nodeapi.classlink.com/v2/my/info", headers=headers)
+    response.raise_for_status()
+    return response.json()
+```
+
+**Explanation:**  
+This shows how we implement OAuth 2.0 **authorization code exchange** manually (instead of relying on AWS Cognito). After the frontend receives an authorization code, this backend exchanges it for an access token and uses that token to fetch user information from ClassLink. These values (e.g. `sourcedId`, `tenantId`) are used to construct the unique user ID in the DynamoDB schema.
+
+---
+
+### Sample 4: Teacher-Specific Roster Enrichment
+
+```python
+if user_profile.get('role') == 'teacher':
+    for course in class_details:
+        roster_response = enrollments_table.query(
+            IndexName='classId-userId-index',
+            KeyConditionExpression=Key('classId').eq(course['classId'])
+        )
+        roster = roster_response.get('Items', [])
+        
+        # Enrich with names
+        for student in roster:
+            student_profile = users_table.get_item(Key={'userId': student['userId']}).get('Item', {})
+            student['firstName'] = student_profile.get('firstName', 'Unknown')
+            student['lastName'] = student_profile.get('lastName', 'Unknown')
+
+        course['roster'] = roster
+```
+
+**Explanation:**  
+This logic enriches the teacher’s roster view with human-readable names for each student. After retrieving all student IDs enrolled in a class, there is a fetch for their individual profiles from the `Users` table and attach the `firstName` and `lastName` fields. This allows the frontend to display meaningful student information, not just raw IDs.
+
+---
+
+## 3. Frontend: React Application
+
+The frontend is a Vite-powered React SPA that consumes the backend’s JSON response and renders dashboards based on the user's role.
+
+---
+
+### Sample 5: Fetching Data After ClassLink OAuth Redirect
+
+```jsx
+useEffect(() => {
+  const code = new URLSearchParams(window.location.search).get("code");
+  if (!code) return;
+
+  const fetchUserData = async () => {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/get-user-data`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+
+    const data = await response.json();
+    setDashboardData(data);
   };
 
-  return (
-    // ...
-    <main className="dashboard-main">
-      {loading && <p>Loading...</p>}
-      {error && <p className="error-message">Error: {error}</p>}
-      {!loading && !error && renderDashboard()}
-    </main>
-    // ...
-  );
-}
+  fetchUserData();
+}, []);
 ```
 
-**Explanation:**
-This snippet showcases **conditional rendering**, a core concept in React. Instead of using complex `if/else` blocks to show or hide parts of the UI, we use simple boolean logic directly within our JSX.
--   `loading && <p>...</p>`: The "Loading..." message is only rendered if the `loading` state is `true`.
--   `error && <p>...</p>`: The error message is only rendered if the `error` state is not `null`.
--   The main dashboard is only rendered when loading is finished and there is no error.
--   Inside `renderDashboard`, we further check the `role` of the logged-in user to determine whether to render the `<TeacherDashboard />` or the `<StudentDashboard />` component. This makes the UI dynamic and responsive to the application's state.
+**Explanation:**  
+This React `useEffect` hook runs once on page load and checks the URL for an authorization `code` (returned from ClassLink). It sends the code to the backend to retrieve user data. The resulting dashboard data includes the user profile, classes, and enrollments—all ready to be rendered.
+
+---
+
+### Sample 6: Teacher Roster Modal
+
+```jsx
+<Modal title={`Student Roster for ${rosterClass?.className}`}>
+  <table className="class-table">
+    <thead>
+      <tr>
+        <th>Student Name</th>
+        <th>Student ID</th>
+      </tr>
+    </thead>
+    <tbody>
+      {rosterClass?.roster?.map(student => (
+        <tr key={student.userId}>
+          <td>{student.firstName} {student.lastName}</td>
+          <td>{student.userId}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</Modal>
+```
+
+**Explanation:**  
+This frontend component dynamically renders the roster of a selected class in a modal. The backend already attached `firstName` and `lastName` to each student in the `roster` array, so the frontend can cleanly display the full name alongside the user ID.
+
+---
+
+## Summary
+
+This project demonstrates:
+
+- Secure credential handling via AWS Secrets Manager.
+- Efficient serverless data ingestion using `batch_writer`.
+- Manual OAuth 2.0 authentication with ClassLink.
+- Dynamic role-based rendering with React.
+- Clean separation between frontend and backend responsibilities.
+
+See [README.md](./README.md) and [SETUP.md](./SETUP.md) for architecture and deployment details.
