@@ -2,7 +2,6 @@ import boto3
 import json
 import requests
 
-# Initialize AWS clients outside handler for reuse
 secrets_manager = boto3.client('secretsmanager')
 dynamodb = boto3.resource('dynamodb')
 users_table = dynamodb.Table('Users')
@@ -29,7 +28,7 @@ def fetch_all_paged_data(base_url, bearer_token, endpoint, object_key, limit=100
         all_data.extend(page_data)
 
         if len(page_data) < limit:
-            break  # No more data
+            break
         offset += limit
 
     return all_data
@@ -54,7 +53,8 @@ def lambda_handler(event, context):
         if len(apps) < 3:
             raise Exception("Less than 3 applications available.")
 
-        app = apps[2]  # 3rd application (0-based index)
+        app = apps[2]  # 3rd application for testing purposes
+
         oneroster_app_id = app.get('oneroster_application_id')
         tenant_id = app.get('tenant_id')
         bearer_token = app.get('bearer')
