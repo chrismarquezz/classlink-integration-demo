@@ -2,24 +2,8 @@ import React from 'react';
 
 function Login() {
   const handleLogin = () => {
-    // These are the parameters for the Cognito Authorization URL.
-    // They must match the configuration of your App Client.
-    const cognitoDomain = 'https://us-east-10vyzim7it.auth.us-east-1.amazoncognito.com';
-    const clientId = '2s9aedlljf2jhfav0up5d7b23d'; // Your App Client ID
-    const redirectUri = 'http://localhost:5173';
-    const scope = 'openid'; // The scope we confirmed works
-    const responseType = 'code';
-    const provider = 'ClassLink'; // The exact name of our Identity Provider
+    const authorizationUrl = 'https://launchpad.classlink.com/oauth2/v2/auth?scope=openid&redirect_uri=http%3A%2F%2Flocalhost%3A5173%2Fcallback&client_id=c17373284925108e6fe96b5e6a8e2b619edfc90d9504&response_type=code';
 
-    // Construct the full URL for the Cognito Hosted UI
-    const authorizationUrl = 
-      `${cognitoDomain}/oauth2/authorize?identity_provider=${provider}` +
-      `&client_id=${clientId}` +
-      `&response_type=${responseType}` +
-      `&scope=${scope}` +
-      `&redirect_uri=${encodeURIComponent(redirectUri)}`;
-
-    // Redirect the user's browser to the login page
     window.location.href = authorizationUrl;
   };
 
