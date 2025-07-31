@@ -1,112 +1,84 @@
 # Project Setup Guide
 
-This guide provides step-by-step instructions to set up and deploy the ClassLink Integration Demonstrator project on your local machine and in your own AWS account.
+This guide outlines the required steps to set up and deploy the ClassLink Integration Demonstrator project both locally and on AWS.
+
+---
 
 ## Prerequisites
 
-Before you begin, ensure you have the following installed on your local machine:
+Ensure the following tools are installed:
 
--   [Node.js](https://nodejs.org/) (which includes `npm`)
--   [Python 3](https://www.python.org/)
--   [AWS CLI](https://aws.amazon.com/cli/) configured with your AWS account credentials.
--   [Git](https://git-scm.com/)
+- [Node.js](https://nodejs.org/) (includes `npm`)
+- [Python 3](https://www.python.org/)
+- [AWS CLI](https://aws.amazon.com/cli/) with credentials configured
+- [Git](https://git-scm.com/)
 
 ---
 
 ## Part 1: Backend Setup (AWS)
 
-This section covers the creation of all necessary AWS resources.
+### Step 1: Create DynamoDB Tables and Index
 
-### Step 1: Create DynamoDB Tables & Index
+1. Navigate to **DynamoDB** in the AWS Console.
+2. Create three tables:
 
-1.  Navigate to the **DynamoDB** service in the AWS Console.
-2.  Create the following three tables:
-    -   **Table 1:** `Users` (Partition key: `userId` (String))
-    -   **Table 2:** `Enrollments` (Partition key: `userId` (String), Sort key: `classId` (String))
-    -   **Table 3:** `Classes` (Partition key: `classId` (Type: String))
-3.  **Create a Global Secondary Index (GSI):**
-    -   Select the `Enrollments` table and go to the **Indexes** tab.
-    -   Click **Create index**.
-    -   **Partition key:** `classId` (String)
-    -   **Index name:** `classId-userId-index`
-    -   Click **Create index**.
+   - **Users**
+     - Partition key: `userId` (String)
+   - **Enrollments**
+     - Partition key: `userId` (String)
+     - Sort key: `classId` (String)
+   - **Classes**
+     - Partition key: `classId` (String)
 
-### Step 2: Store API Credentials in Secrets Manager
+3. Add a **Global Secondary Index (GSI)** to the `Enrollments` table:
 
-1.  Navigate to **AWS Secrets Manager**.
-2.  Store a new secret with the name `classlink-api-credentials`.
-3.  Select **"Other type of secret"** and add two key/value pairs:
-    -   `base_url`: (Your ClassLink Proxy URL)
-    -   `access_token`: (Your ClassLink Access Token)
-
-### Step 3: Set Up AWS Cognito for SSO
-
-1.  Navigate to the **AWS Cognito** service.
-2.  **Create a User Pool:** Give it a generic, descriptive name like `classlink-app-users`.
-3.  **Create a Cognito Domain:** In the **App integration** tab, create a free Cognito domain prefix (e.g., `my-classlink-app-1234`).
-4.  **Create an App Client:**
-    -   In the **App integration** tab, create a new app client (e.g., `classlink-app-client`).
-    -   Note the **Client ID** that is generated.
-5.  **Create an OIDC Identity Provider via AWS CLI:**
-    -   Using the AWS CLI is the most reliable method. Open your terminal and use the command template below.
-    -   You must replace the three placeholder values: `[YOUR_USER_POOL_ID]`, `[YOUR_CLIENT_ID]`, and `[YOUR_CLIENT_SECRET]`.
-
-    ```bash
-    aws cognito-idp create-identity-provider \
-    --user-pool-id "[YOUR_USER_POOL_ID]" \
-    --provider-name "ClassLink" \
-    --provider-type "OIDC" \
-    --provider-details "{\"client_id\":\"[YOUR_CLIENT_ID]\",\"client_secret\":\"[YOUR_CLIENT_SECRET]\",\"attributes_request_method\":\"GET\",\"oidc_issuer\":\"[https://launchpad.classlink.com](https://launchpad.classlink.com)\",\"authorize_scopes\":\"openid\"}" \
-    --attribute-mapping "{\"email\":\"email\"}"
-    ```
-6.  **Enable the Provider for Your App Client:**
-    -   In the AWS Console, navigate to your App Client's settings page.
-    -   In the **"Identity providers"** section, check the box next to **`ClassLink`**.
-    -   Click **Save changes**.
-    
-### Step 4: Deploy the Data Ingestion Lambda
-
-1.  Create a Lambda function named `classlink-data-ingestion` (Python 3.11+).
-2.  Attach the `AmazonDynamoDBFullAccess` and `SecretsManagerReadWrite` policies to its execution role.
-3.  Prepare and upload the deployment package containing the code from `backend/data_ingestion/` and the `requests` library.
-4.  Increase the function **Timeout** to `2 minutes`.
-5.  Run a test to populate your database.
-
-### Step 5: Deploy the Secure Data API
-
-1.  Create a Lambda function named `get-user-specific-data` (Python 3.11+).
-2.  Attach the `AmazonDynamoDBReadOnlyAccess` policy to its execution role.
-3.  Copy the code from `backend/get_data/lambda_function.py` into the Lambda console and deploy.
-4.  **Add a secure API Gateway Trigger:**
-    -   Choose **HTTP API** type.
-    -   For **Security**, select **JWT Authorizer**.
-    -   **Issuer URL:** `https://cognito-idp.[your-region].amazonaws.com/[your-user-pool-id]`
-    -   **Audience:** (Your App Client ID)
-    -   **Identity Source:** `$request.header.Authorization`
-5.  Note the **API endpoint URL** that is generated.
+   - Partition key: `classId` (String)
+   - Index name: `classId-userId-index`
 
 ---
 
-## Part 2: Frontend Setup (Local)
+### Step 2: Store API Credentials in AWS Secrets Manager
 
-1.  **Clone the Repository:**
-    ```bash
-    git clone [https://github.com/chrismarquezz/ClassLink-Internship-Project.git](https://github.com/chrismarquezz/ClassLink-Internship-Project.git)
-    cd ClassLink-Internship-Project/frontend
-    ```
-2.  **Install Dependencies:**
-    ```bash
-    npm install
-    ```
-3.  **Create Environment File:** In the `frontend` directory, create a `.env` file.
-4.  Add the **new, secure** API Gateway endpoint URL to this file:
-    ```
-    VITE_SECURE_API_URL="PASTE_YOUR_SECURE_API_ENDPOINT_URL_HERE"
-    ```
-5.  **Configure Amplify:** Open `frontend/src/main.jsx` and ensure the `userPoolId`, `userPoolClientId`, and `domain` values match your Cognito setup.
-6.  **Run the Development Server:**
-    ```bash
-    npm run dev
-    ```
+1. Navigate to **Secrets Manager** in the AWS Console.
+2. Create a new secret:
+   - Type: **Other type of secret**
+   - Name: `classlink-api-credentials`
+   - Key-value pairs:
+     - `base_url`: Your ClassLink proxy URL
+     - `admin_api_key`: Your ClassLink API key
 
-Your application should now be running locally, connected to your live, secure AWS backend and ready for SSO login.
+---
+
+### Step 3: Deploy the Data Ingestion Lambda
+
+1. Create a Lambda function named `classlink-data-ingestion` using **Python**.
+2. Attach the following permissions to the Lambda's execution role:
+   - `AmazonDynamoDBFullAccess`
+   - `SecretsManagerReadWrite`
+3. Package the code from `backend/data_ingestion/` along with dependencies (`requests`, etc.) into a ZIP archive and upload it.
+4. Set the function timeout to **2 minutes**.
+5. Execute a manual test to populate DynamoDB with data from the ClassLink API.
+
+---
+
+### Step 4: Deploy the Roster Data API
+
+1. Create a Lambda function named `get-user-data` using **Python**.
+2. Attach the `SecretsManagerReadWrite` and `AmazonDynamoDBFullAccess` policies to the Lambda’s execution role.
+3. Use the code from `backend/get_data/lambda_function.py` and deploy it in the Lambda Console.
+4. Add an **HTTP API Gateway trigger**:
+   - API type: **HTTP API**
+   - Stage: `$default`
+   - Enable **CORS** (for development use: `Access-Control-Allow-Origin: *`)
+   - Authentication: **None** (secured via access token passed manually)
+5. Note the auto-generated API Gateway URL. This is the secure endpoint to be used by the frontend.
+
+---
+
+## Part 2: Frontend Setup (Local Development)
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/chrismarquezz/ClassLink-Internship-Project.git
+   cd ClassLink-Internship-Project/frontend
