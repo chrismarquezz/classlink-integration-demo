@@ -62,7 +62,9 @@ function TeacherDashboard({ teacherData }) {
             {rosterClass?.roster?.length > 0 ? (
               rosterClass.roster.map(student => (
                 <tr key={student.userId}>
-                  <td>Student {student.userId}</td>
+                  <td>{student.firstName && student.lastName 
+                      ? `${student.firstName} ${student.lastName}` 
+                      : `Student ${student.userId}`}</td>
                   <td>{student.userId}</td>
                 </tr>
               ))
