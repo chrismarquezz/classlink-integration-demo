@@ -1,43 +1,52 @@
 # Best Practices for Security and Efficiency
 
-This document outlines the key best practices implemented in this project to ensure the application is secure, efficient, and maintainable. These principles are foundational to the application's architecture.
+This document outlines best practices implemented in the ClassLink Integration Demonstrator to ensure security, performance, and maintainability. These principles support the application’s architecture and operation in a production-ready environment.
 
 ---
 
 ## I. Security Best Practices
 
-### 1. Never Hardcode Secrets
+### 1. Secrets Management via AWS Secrets Manager
 
-**Practice:** All sensitive credentials, such as API tokens and secrets, are stored in **AWS Secrets Manager** and are explicitly excluded from the source code repository via the `.gitignore` file.
+**Practice:** All sensitive credentials (e.g., API tokens, OIDC client secrets) are retrieved at runtime from **AWS Secrets Manager**. Secrets are never hardcoded or committed to version control.
 
-**Benefit:** This is the most critical security practice. It prevents secret keys from being exposed in your GitHub repository, where they could be discovered and misused. The Lambda function's IAM role grants it secure, temporary permission to retrieve these secrets at runtime.
+**Benefit:** Prevents accidental exposure of sensitive credentials and allows secure rotation of secrets without modifying application code.
 
-### 2. Principle of Least Privilege
+---
 
-**Practice:** Each AWS Lambda function is assigned an IAM execution role with the minimum permissions necessary for it to function. For example:
+### 2. Principle of Least Privilege (PoLP)
 
-* The `classlink-data-ingestion` function is granted write access to DynamoDB and read access to Secrets Manager, but nothing more.
-* The `get-user-specific-data` function is only granted read-only access to DynamoDB.
+**Practice:** Each AWS Lambda function is assigned an IAM execution role with only the permissions required to perform its intended function.
 
-**Benefit:** If a function were ever to be compromised, this principle limits the potential damage. The compromised function could not access or modify other unrelated AWS resources.
+Examples:
+- The `classlink-data-ingestion` function has write access to DynamoDB and read access to Secrets Manager.
+- The `get-user-data` function has read-only access to DynamoDB.
 
-### 3. Secure API Gateway with JWT Authorizer
+**Benefit:** Minimizes the blast radius of a potential compromise by limiting access to only what is explicitly required.
 
-**Practice:** The data-serving API endpoint is protected by an **API Gateway JWT Authorizer**. This authorizer is configured to trust our AWS Cognito User Pool.
+---
 
-**Benefit:** This ensures that only authenticated users with a valid, unexpired ID Token from a successful login can access the backend data API. Any unauthenticated requests are rejected at the gateway level before they can even reach our Lambda function, providing a robust and standard layer of security.
+### 3. Secured OAuth2 Authorization Flow
 
-### 4. Separation of Concerns
+**Practice:** ClassLink's OAuth2 and OIDC login flow is used for user authentication. After login, a one-time authorization code is exchanged securely for an access token using backend logic.
 
-**Practice:** The application is architecturally separated into a distinct backend (AWS services) and frontend (React SPA). The frontend never communicates directly with the database.
+**Benefit:** Authentication occurs through ClassLink's secure LaunchPad system. No sensitive tokens are exposed on the client side, and the server verifies access through a backend-only token exchange.
 
-**Benefit:** This prevents any direct exposure of the database to the public internet. All data access must go through the controlled, secure API Gateway endpoint, which provides a single point of entry that can be monitored and secured.
+---
 
-### 5. Use of Environment Variables on the Frontend
+### 4. Backend-Only Data Access
 
-**Practice:** The frontend React application uses a `.env` file to store its configuration, such as the backend API URL. This file is included in `.gitignore`.
+**Practice:** The frontend does not connect directly to DynamoDB or any data source. All data is accessed via a secure AWS Lambda endpoint behind API Gateway.
 
-**Benefit:** This prevents environment-specific details from being hardcoded into the application, making it easy to point the frontend to different backend environments without changing the source code.
+**Benefit:** Eliminates the risk of direct database exposure. Ensures all data requests are controlled, validated, and logged.
+
+---
+
+### 5. Environment-Specific Frontend Configuration
+
+**Practice:** The frontend uses Vite `.env` files (e.g., `.env.local`) to store API URLs and other configuration variables. These files are excluded from source control via `.gitignore`.
+
+**Benefit:** Allows secure and flexible environment configuration across development, staging, and production environments without code changes.
 
 ---
 
@@ -45,22 +54,43 @@ This document outlines the key best practices implemented in this project to ens
 
 ### 1. Serverless Architecture
 
-**Practice:** We use **AWS Lambda** for our backend logic instead of a traditional, always-on server.
+**Practice:** Backend functions are implemented using **AWS Lambda** and invoked via **API Gateway**.
 
-**Benefit:** This is highly efficient for both cost and performance:
+**Benefit:**
+- **Cost-efficient:** Compute is charged only during function execution.
+- **Scalable:** Functions scale automatically with traffic volume.
+- **Low maintenance:** No server provisioning or patching required.
 
-* **Cost:** You only pay for the compute time when a function is actually running (measured in milliseconds), which is extremely cost-effective for applications with variable traffic.
-* **Scalability:** AWS automatically handles scaling. If thousands of requests come in at once, Lambda will scale out to handle them without any manual intervention.
-* **Maintenance:** There are no servers to patch, manage, or update.
+---
 
-### 2. Component-Based UI
+### 2. Efficient Batch Writes to DynamoDB
 
-**Practice:** The React frontend is broken down into small, reusable components (`StudentDashboard`, `TeacherDashboard`, `ProfileDropdown`, `Modal`).
+**Practice:** The ingestion pipeline uses DynamoDB’s `batch_writer()` to perform high-volume inserts during data sync from ClassLink.
 
-**Benefit:** This makes the code easier to understand, debug, and maintain. Each component has a single responsibility, and changes to one component are less likely to break another. This modularity is a core principle of modern web development.
+**Benefit:** Reduces latency and handles retry logic automatically for failed write operations, improving throughput and resilience.
 
-### 3. User-Specific Data Fetching
+---
 
-**Practice:** After a user authenticates, the frontend calls a secure API that returns only the data relevant to that specific user, rather than fetching the entire database.
+### 3. Pagination for Scalable API Requests
 
-**Benefit:** This is highly efficient. It minimizes the amount of data transferred over the network and reduces the amount of data processing that needs to happen on the frontend, leading to a faster and more responsive user experience.
+**Practice:** ClassLink API endpoints that return large datasets (e.g., `/v2/users`) are accessed using offset-based pagination (e.g., `?limit=1000&offset=2000`).
+
+**Benefit:** Supports controlled, chunked data ingestion and prevents timeouts or memory overflow during synchronization.
+
+---
+
+### 4. Component-Based Frontend UI
+
+**Practice:** The React application is composed of modular components (`TeacherDashboard`, `StudentDashboard`, `Modal`, etc.).
+
+**Benefit:** Promotes code reuse, testability, and maintainability. Each component has a single responsibility and can be updated independently.
+
+---
+
+### 5. Role-Based Rendering and Data Fetching
+
+**Practice:** The backend returns only the data relevant to the authenticated user’s role (student or teacher). For teachers, class rosters are included.
+
+**Benefit:** Improves efficiency and privacy. Reduces the volume of frontend-rendered data while tailoring the UI experience per user type.
+
+---
