@@ -91,7 +91,7 @@ Returns the profile, class list, and enrollment data for the currently authentic
 
 - **Endpoint:** `/` (Root path of the deployed Lambda via API Gateway)
 - **Method:** `POST`
-- **Authentication:** JWT ID Token from Cognito required.
+- **Authentication:** Requires a valid ClassLink OAuth2 authorization code in the request body
 
 ### Request Header
 
