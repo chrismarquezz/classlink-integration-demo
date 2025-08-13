@@ -39,9 +39,9 @@ This application is built using a **serverless architecture** on Amazon Web Serv
 #### Pagination Example:
 To ingest users in batches:
 
-`GET /v2/users?limit=1000&offset=0`
-`GET /v2/users?limit=1000&offset=1000`
-`GET /v2/users?limit=1000&offset=2000`
+- `GET /v2/users?limit=1000&offset=0`
+- `GET /v2/users?limit=1000&offset=1000`
+- `GET /v2/users?limit=1000&offset=2000`
 
 The `offset` tells the API where to start returning results from. For example, `offset=1000` skips the first 1000 users.
 
