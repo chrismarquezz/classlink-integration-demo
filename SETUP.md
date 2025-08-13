@@ -72,9 +72,11 @@ You will need to create **two** separate secrets.
 
 ---
 
+---
+
 ## Part 2: Frontend Setup (Local Development)
 
-1.  Clone the repository with its new name:
+1.  Clone the repository:
     ```bash
     git clone [https://github.com/chrismarquezz/classlink-integration-demo.git](https://github.com/chrismarquezz/classlink-integration-demo.git)
     cd classlink-integration-demo/frontend
@@ -84,19 +86,10 @@ You will need to create **two** separate secrets.
     npm install
     ```
 3.  Create an environment file named `.env` in the `frontend` directory.
-4.  Add the following variables to your `.env` file, give values as necessary:
+4.  Add the full Invoke URL for your `get-user-data` API to this file. This is the only environment variable the frontend needs.
+
     ```
-    # The full Invoke URL for your get-user-data API, including the stage and path
-    VITE_GET_USER_DATA_ENDPOINT=...
-
-    # The public URL for your Cognito Hosted UI domain
-    VITE_COGNITO_DOMAIN=...
-
-    # The public Client ID for your Cognito App Client
-    VITE_COGNITO_CLIENT_ID=...
-
-    # The redirect URI for your local development server
-    VITE_COGNITO_REDIRECT_URI=...
+    VITE_GET_USER_DATA_ENDPOINT="PASTE_YOUR_API_ENDPOINT_URL_HERE"
     ```
 5.  Run the development server:
     ```bash
