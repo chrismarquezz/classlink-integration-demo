@@ -1,6 +1,6 @@
 # ClassLink Integration Demonstrator
 
-This project is a lightweight, full-stack web application designed to demonstrate a complete, end-to-end integration with the ClassLink ecosystem.
+To improve the efficiency of the partner onboarding process and speed u integration times, this project serves as a lightweight application designed to demonstrate a complete, end-to-end integration with the ClassLink ecosystem.
 
 ---
 
