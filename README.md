@@ -1,4 +1,4 @@
-# ClassLink Integration Demonstrator
+# ClassLink Integration Demo
 
 To improve the efficiency of the partner onboarding process and speed up integration times, this project serves as a lightweight application designed to demonstrate a complete, end-to-end integration with the ClassLink ecosystem.
 
