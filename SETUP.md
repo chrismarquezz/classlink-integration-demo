@@ -1,6 +1,6 @@
 # Project Setup Guide
 
-This guide outlines the required steps to set up and deploy the ClassLink Integration Demonstrator project both locally and on AWS.
+This guide outlines the required steps to set up and deploy the ClassLink Integration Demo project both locally and on AWS.
 
 ---
 
