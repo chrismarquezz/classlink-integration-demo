@@ -4,6 +4,12 @@ To improve the efficiency of the partner onboarding process and speed up integra
 
 ---
 
+## Project Demo
+
+![Project Demo GIF](./assets/demo.gif)
+
+---
+
 ## Core Purpose
 
 The goal is to showcase three key functionalities:
