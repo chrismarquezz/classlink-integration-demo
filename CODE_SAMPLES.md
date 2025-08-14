@@ -36,8 +36,8 @@ with users_table.batch_writer() as batch:
 print(f"Users table populated with {items_written_users} items.")
 ```
 
-### Explanation:
-This snippet solves a critical data integrity problem. The sourcedId from the Roster Server API is only unique within a specific tenant (a school district). To create a globally unique primary key for our database, we combine the tenantId (extracted from the user's primary organization) with their sourcedId. This composite key (tenantId_sourcedId) ensures that we can accurately store and retrieve data for users from any number of different tenants without conflicts.
+**Explanation:**
+This snippet solves a critical data integrity problem. The `sourcedId` from the Roster Server API is only unique *within* a specific tenant (a school district). To create a globally unique primary key for our database, we combine the `tenantId` (extracted from the user's primary organization) with their `sourcedId`. This composite key (`tenantId_sourcedId`) ensures that we can accurately store and retrieve data for users from any number of different tenants without conflicts.
 
 ---
 
@@ -73,8 +73,8 @@ def get_user_info(access_token):
     response.raise_for_status()
     return response.json()
 ```
-### Explanation:
-This is the core of the secure authentication flow. The get_access_token function performs the critical backend token exchange. It takes the temporary code from the frontend and sends it to the ClassLink /token endpoint, along with the application's secret credentials, to receive a real access_token. The get_user_info function then uses that token to securely fetch the logged-in user's definitive tenantId and sourcedId from the /my/info endpoint.
+**Explanation:**
+This is the core of the secure authentication flow. The `get_access_token` function performs the critical backend token exchange. It takes the temporary `code` from the frontend and sends it to the ClassLink `/token` endpoint, along with the application's secret credentials, to receive a real `access_token`. The `get_user_info` function then uses that token to securely fetch the logged-in user's definitive `tenantId` and `sourcedId` from the `/my/info` endpoint.
 
 ### Sample 3: Teacher-Specific Roster Enrichment
 ```
@@ -99,8 +99,8 @@ if user_profile.get('role') == 'teacher':
 
         course['roster'] = roster
 ```
-### Explanation:
-This logic provides a better user experience for teachers. After fetching a teacher's classes, the code checks if the user's role is teacher. If it is, it performs an additional query for each class to get the full student roster. It then enriches this roster by looking up each student's first and last name from the Users table. This ensures the frontend can display a meaningful roster with names, not just IDs.
+**Explanation:**
+This logic provides a better user experience for teachers. After fetching a teacher's classes, the code checks if the user's role is `teacher`. If it is, it performs an additional query for each class to get the full student roster. It then enriches this roster by looking up each student's first and last name from the `Users` table. This ensures the frontend can display a meaningful roster with names, not just IDs.
 
 ---
 
@@ -145,11 +145,8 @@ useEffect(() => {
   }
 }, []); // Empty array ensures this runs only once on page load
 ```
-### Explanation:
-This React useEffect hook handles the entire post-login redirect flow. When the component first loads, it checks the browser's URL for a code query parameter. If one is found, it immediately sends that code to our secure backend API in a POST request. The backend then completes the token exchange and returns the user's specific data, which is used to render the dashboard. This hook is the critical link between the frontend and the backend in the authentication process.
-
-
-
+**Explanation:**
+This React `useEffect` hook handles the entire post-login redirect flow. When the component first loads, it checks the browser's URL for a `code` query parameter. If one is found, it immediately sends that `code` to our secure backend API in a `POST` request. The backend then completes the token exchange and returns the user's specific data, which is used to render the dashboard. This hook is the critical link between the frontend and the backend in the authentication process.
 
 
 
