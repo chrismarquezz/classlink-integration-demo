@@ -19,8 +19,8 @@ This document outlines best practices implemented in the ClassLink Integration D
 **Practice:** Each AWS Lambda function is assigned an IAM execution role with only the permissions required to perform its intended function.
 
 **Examples:**
-- The `classlink-data-ingestion` function has write access to DynamoDB and read access to Secrets Manager.
-- The `get-user-data` function has read-only access to DynamoDB.
+- The `classlink-data-ingestion` function has write access to DynamoDB and read access to Secrets Manager
+- The `get-user-data` function has read-only access to DynamoDB
 
 **Benefit:** Minimizes the blast radius of a potential compromise by limiting access to only what is explicitly required.
 
@@ -59,8 +59,8 @@ This document outlines best practices implemented in the ClassLink Integration D
 **Practice:** Backend functions are implemented using **AWS Lambda** and invoked via **API Gateway**.
 
 **Benefit:**
-- **Cost-efficient:** Compute is charged only during function execution.
-- **Scalable:** Functions scale automatically with traffic volume.
-- **Low maintenance:** No server provisioning or patching required.
+- **Cost-efficient:** Compute is charged only during function execution
+- **Scalable:** Functions scale automatically with traffic volume
+- **Low maintenance:** No server provisioning or patching required
 
 ---
