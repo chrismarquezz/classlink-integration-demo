@@ -33,7 +33,7 @@ Retrieves information about the authenticated user.
 
 - **Endpoint:** `https://nodeapi.classlink.com/v2/my/info`
 - **Method:** `GET`
-- **Authentication:** Requires a valid Bearer token from the `/token` endpoint.
+- **Authentication:** Requires a valid Bearer token from the `/token` endpoint
 
 ---
 
@@ -45,7 +45,7 @@ Receives a one-time code from the frontend, exchanges it for tokens with ClassLi
 
 - **Endpoint:** `/get-user-data` (Full URL is the API Gateway Invoke URL)
 - **Method:** `POST`
-- **Authentication:** The security is handled by the one-time `code` exchange. The endpoint itself is public, but it will fail if a valid, unused `code` is not provided in the body.
+- **Authentication:** The security is handled by the one-time `code` exchange. The endpoint itself is public, but it will fail if a valid, unused `code` is not provided in the body
 
 ### Request Body
 
