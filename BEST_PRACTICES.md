@@ -48,7 +48,7 @@ This document outlines best practices implemented in the ClassLink Integration D
 
 **Practice:** For applications designed to handle data from multiple tenants simultaneously, the recommended best practice is to segregate data into separate DynamoDB tables for each tenant.
 
-**Benefit:** This ensures strict data isolation and security, preventing any possibility of one tenant's data being accidentally exposed to another.
+**Benefit:** This ensures strict data isolation and security, preventing any possibility of one tenant's data being accidentally exposed to another tenant's data.
 
 ---
 
