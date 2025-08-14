@@ -1,4 +1,3 @@
-import React from 'react';
 
 function StudentDashboard({ studentData }) {
   const classes = studentData?.classes || [];
