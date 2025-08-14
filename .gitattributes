@@ -1,0 +1,2 @@
+backend/data_ingestion/lambda_function.py linguist-vendored
+backend/get_data/lambda_function.py linguist-vendored
