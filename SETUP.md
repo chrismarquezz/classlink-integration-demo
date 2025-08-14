@@ -19,7 +19,7 @@ Ensure the following tools are installed:
 
 ### Step 1: Create DynamoDB Tables and Index
 
-1.  Navigate to **DynamoDB** in the AWS Console.
+1.  Navigate to **DynamoDB** in the AWS Console
 2.  Create three tables:
     -   **Users**: Partition key `userId` (String)
     -   **Enrollments**: Partition key `userId` (String), Sort key `classId` (String)
@@ -50,33 +50,33 @@ You will need to create **two** separate secrets.
 
 ### Step 3: Deploy the Data Ingestion Lambda
 
-1.  Create a Lambda function named `classlink-data-ingestion` using **Python**.
-2.  Attach `AmazonDynamoDBFullAccess` and `SecretsManagerReadWrite` policies to its execution role.
+1.  Create a Lambda function named `classlink-data-ingestion` using **Python**
+2.  Attach `AmazonDynamoDBFullAccess` and `SecretsManagerReadWrite` policies to its execution role
 3.  **Prepare Deployment Package:**
-    -   Create a temporary folder (e.g., `ingestion-package`).
-    -   Copy the `lambda_function.py` from `backend/data_ingestion/` into it.
+    -   Create a temporary folder (e.g., `ingestion-package`)
+    -   Copy the `lambda_function.py` from `backend/data_ingestion/` into it
     -   Install dependencies into the folder: `pip install -r backend/data_ingestion/requirements.txt -t .`
-    -   Zip the *contents* of the folder and upload it to Lambda.
-4.  Set the function timeout to **2 minutes**.
-5.  Run a manual test to populate your DynamoDB tables.
+    -   Zip the *contents* of the folder and upload it to Lambda
+4.  Set the function timeout to **2 minutes**
+5.  Run a manual test to populate your DynamoDB tables
 
 ---
 
 ### Step 4: Deploy the Secure User Data API
 
-1.  Create a Lambda function named `get-user-data` using **Python**.
-2.  Attach `AmazonDynamoDBFullAccess` and `SecretsManagerReadWrite` policies to its execution role.
+1.  Create a Lambda function named `get-user-data` using **Python**
+2.  Attach `AmazonDynamoDBFullAccess` and `SecretsManagerReadWrite` policies to its execution role
 3.  **Prepare Deployment Package:**
-    -   Create a temporary folder (e.g., `get-data-package`).
-    -   Copy the `lambda_function.py` from `backend/get_data/` into it.
+    -   Create a temporary folder (e.g., `get-data-package`)
+    -   Copy the `lambda_function.py` from `backend/get_data/` into it
     -   Install dependencies into the folder: `pip install -r backend/get_data/requirements.txt -t .`
-    -   Zip the *contents* of the folder and upload it to Lambda.
+    -   Zip the *contents* of the folder and upload it to Lambda
 4.  Add an **API Gateway trigger** with the following configuration:
     -   Type: **HTTP API**
     -   Method: **POST**
     -   Path: `/get-user-data`
-    -   Authentication: **None**.
-5.  Note the **Invoke URL** for the API's `default` stage.
+    -   Authentication: **None**
+5.  Note the **Invoke URL** for the API's `default` stage
 
 ---
 
@@ -91,7 +91,7 @@ You will need to create **two** separate secrets.
     ```bash
     npm install
     ```
-3.  Create an environment file named `.env` in the `frontend` directory.
+3.  Create an environment file named `.env` in the `frontend` directory
 4.  Add the full Invoke URL for your `get-user-data` API to this file:
     ```
     VITE_GET_USER_DATA_ENDPOINT="PASTE_YOUR_API_ENDPOINT_URL_HERE"
