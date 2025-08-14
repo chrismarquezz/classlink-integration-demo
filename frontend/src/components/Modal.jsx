@@ -1,4 +1,3 @@
-import React from 'react';
 
 function Modal({ show, onClose, title, children }) {
   if (!show) {

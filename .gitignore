@@ -1,2 +1,64 @@
-# Ignore the temporary Lambda deployment package
-lambda-package/
+# General OS files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Frontend (Vite + React) ---
+
+# Dependencies
+frontend/node_modules/
+
+# Build output
+frontend/dist/
+
+# Environment variables (VERY IMPORTANT)
+frontend/.env*
+
+# Vite-specific files
+frontend/.pnp.*
+
+# --- Backend (Python Lambda) ---
+
+# Python cache
+backend/**/__pycache__/
+*.pyc
+
+# Python virtual environment (if you create one)
+venv/
+.venv/
+
+# This section is for the dependency folders you untracked.
+# Add the names of any other library folders you see.
+backend/get_user_data/boto3/
+backend/get_user_data/boto3-*/
+backend/get_user_data/botocore/
+backend/get_user_data/botocore-*/
+backend/get_user_data/certifi/
+backend/get_user_data/certifi-*/
+backend/get_user_data/charset_normalizer/
+backend/get_user_data/charset_normalizer-*/
+backend/get_user_data/dateutil/
+backend/get_user_data/idna/
+backend/get_user_data/idna-*/
+backend/get_user_data/jmespath/
+backend/get_user_data/jmespath-*/
+backend/get_user_data/python_dateutil-*/
+backend/get_user_data/requests/
+backend/get_user_data/requests-*/
+backend/get_user_data/s3transfer/
+backend/get_user_data/s3transfer-*/
+backend/get_user_data/six-*/
+backend/get_user_data/urllib3/
+backend/get_user_data/urllib3-*/
+backend/get_user_data/six.py
+
+# Repeat for the data_ingestion folder's dependencies
+backend/data_ingestion/requests/
+backend/data_ingestion/requests-*/
+# (Add any other libraries from data_ingestion here)
+

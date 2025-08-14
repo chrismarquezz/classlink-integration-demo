@@ -23,7 +23,6 @@ CORS_HEADERS = {
 }
 
 def get_oidc_credentials():
-    """Retrieves all OIDC credentials from Secrets Manager."""
     secret_name = "classlink-oidc-credentials"
     response = secrets_manager.get_secret_value(SecretId=secret_name)
     secret = json.loads(response['SecretString'])
@@ -31,7 +30,6 @@ def get_oidc_credentials():
     return secret['oidc_client_id'], secret['oidc_client_secret']
 
 def get_access_token(code, client_id, client_secret):
-    """Exchanges a one-time code for an access token."""
     token_url = "https://launchpad.classlink.com/oauth2/v2/token"
     
     redirect_uri = "http://localhost:5173/callback"
@@ -52,41 +50,22 @@ def get_access_token(code, client_id, client_secret):
         'launch_url': launch_url
     }
     
-    print(f"DEBUG: Sending token request with payload: {payload}")
-    print("Requesting access token from /v2/token...")
     response = requests.post(token_url, data=payload)
 
-    # --- DEBUG LOGS ---
-    print(f"DEBUG: Token endpoint response status: {response.status_code}")
-    print(f"DEBUG: Token endpoint response body: {response.text}")
-    # --- END DEBUG LOGS ---
-
     response.raise_for_status()
-    print("Access token received.")
     return response.json()['access_token']
 
 def get_user_info(access_token):
-    """Uses an access token to get the user's info."""
     info_url = "https://nodeapi.classlink.com/v2/my/info"
     headers = {
         'Authorization': f'Bearer {access_token}',
         'Accept': 'application/json'
     }
     
-    print(f"DEBUG: Calling {info_url}")
-    print(f"DEBUG: Headers: {headers}")
-    print(f"DEBUG: Access token: {access_token}")
-    print("Requesting user info from /v2/my/info...")
-    
     response = requests.get(info_url, headers=headers)
-    
-    print(f"DEBUG: Response status: {response.status_code}")
-    print(f"DEBUG: Response headers: {dict(response.headers)}")
-    print(f"DEBUG: Response body: {response.text}")
     
     response.raise_for_status()
     user_info = response.json()
-    print(f"User info received: {user_info}")
     return user_info
 
 def lambda_handler(event, context):
@@ -94,20 +73,13 @@ def lambda_handler(event, context):
         return {'statusCode': 200, 'headers': CORS_HEADERS, 'body': ''}
 
     try:
-        print(f"DEBUG: Full event: {json.dumps(event)}")
         
         body = json.loads(event.get('body', '{}'))
-        print(f"DEBUG: Parsed body: {body}")
         
-        code = body.get('code')
-        print(f"DEBUG: Extracted code: {code}")
-        print(f"DEBUG: Code type: {type(code)}")
-        print(f"DEBUG: Code length: {len(code) if code else 'None'}")
+        code = body.get('code')    
         
         if not code:
             raise ValueError("Authorization code not provided.")
-
-        print(f"DEBUG: Final code being used: {code}")
 
         client_id, client_secret = get_oidc_credentials()
 
@@ -121,7 +93,6 @@ def lambda_handler(event, context):
             raise ValueError("SourcedId or TenantId not found in user info response.")
 
         composite_user_id = f"{tenant_id}_{sourced_id}"
-        print(f"Fetching data from DynamoDB for user: {composite_user_id}")
         
         user_profile_response = users_table.get_item(Key={'userId': composite_user_id})
         user_profile = user_profile_response.get('Item')
@@ -142,21 +113,29 @@ def lambda_handler(event, context):
         
         if user_profile.get('role') == 'teacher':
             for course in class_details:
-                roster_response = enrollments_table.query(IndexName='classId-userId-index', KeyConditionExpression=boto3.dynamodb.conditions.Key('classId').eq(course['classId']))
-                course['roster'] = roster_response.get('Items', [])
+                roster_response = enrollments_table.query(
+                    IndexName='classId-userId-index',
+                    KeyConditionExpression=boto3.dynamodb.conditions.Key('classId').eq(course['classId'])
+                )
+                roster = roster_response.get('Items', [])
+
+                for enrollment in roster:
+                    user_id = enrollment.get('userId')
+                    if user_id:
+                        user_resp = users_table.get_item(Key={'userId': user_id})
+                        user_item = user_resp.get('Item', {})
+                        enrollment['firstName'] = user_item.get('firstName', 'Unknown')
+                        enrollment['lastName'] = user_item.get('lastName', 'Unknown')
+
+                course['roster'] = roster
+
 
         response_data = {
             "userProfile": user_profile,
             "enrollments": user_enrollments,
             "classes": class_details
         }
-
-        print(f"DEBUG: Response data types:")
-        print(f"DEBUG: user_profile type: {type(user_profile)}")
-        print(f"DEBUG: user_enrollments type: {type(user_enrollments)}")  
-        print(f"DEBUG: class_details type: {type(class_details)}")
         
-        # Check for Decimal objects in the data
         def find_decimals(obj, path=""):
             if isinstance(obj, Decimal):
                 print(f"DEBUG: Found Decimal at {path}: {obj}")
@@ -172,5 +151,4 @@ def lambda_handler(event, context):
         return {'statusCode': 200, 'headers': CORS_HEADERS, 'body': json.dumps(response_data, cls=DecimalEncoder)}
 
     except Exception as e:
-        print(f"Error: {e}")
         return {'statusCode': 500, 'headers': CORS_HEADERS, 'body': json.dumps({'error': str(e)}, cls=DecimalEncoder)}
