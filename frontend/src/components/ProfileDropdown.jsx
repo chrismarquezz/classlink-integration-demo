@@ -1,13 +1,9 @@
-import React from 'react';
 
-// This component now receives the user profile from our database and an onSignOut function
 function ProfileDropdown({ user, onSignOut }) {
-  // This check is still important
   if (!user) {
     return null;
   }
 
-  // Read the properties from our database user object
   const firstName = user.firstName;
   const lastName = user.lastName;
   const email = user.email;
@@ -24,9 +20,8 @@ function ProfileDropdown({ user, onSignOut }) {
         </div>
       )}
       <div className="dropdown-item">
-        <strong>Role:</strong> {role}
+          <strong>Role:</strong> {role && role.charAt(0).toUpperCase() + role.slice(1)}
       </div>
-      {/* The Sign Out button now correctly calls the onSignOut function */}
       <div className="dropdown-item logout" onClick={onSignOut}>
         Sign Out
       </div>

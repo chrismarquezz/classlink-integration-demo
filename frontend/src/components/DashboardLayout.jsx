@@ -1,4 +1,3 @@
-import React from 'react';
 
 function DashboardLayout({ children, dropdownRef, isDropdownOpen, user, onSignOut, onProfileClick }) {
   return (

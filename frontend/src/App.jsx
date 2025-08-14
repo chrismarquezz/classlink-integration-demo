@@ -19,21 +19,17 @@ function App() {
       if (hasHandledCode.current) return;
       hasHandledCode.current = true;
 
-      console.log("Successfully redirected back from ClassLink with code:", code);
-
       try {
         setLoading(true);
         setError(null);
 
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
-        const response = await fetch(import.meta.env.VITE_API_ENDPOINT, {
+        const response = await fetch(import.meta.env.VITE_GET_USER_DATA_ENDPOINT, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ code })
         });
-
-        console.log('Lambda response status:', response.status);
 
         if (!response.ok) {
           const errorData = await response.json();
@@ -41,14 +37,12 @@ function App() {
         }
 
         const userData = await response.json();
-        console.log('User data received from Lambda:', userData);
 
         setUser(userData);
         setLoading(false);
         window.history.replaceState({}, document.title, window.location.pathname);
 
       } catch (err) {
-        console.error('Error calling Lambda:', err);
         setError(`Authentication failed: ${err.message}`);
         setLoading(false);
       }
