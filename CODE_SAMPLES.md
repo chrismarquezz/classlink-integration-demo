@@ -77,7 +77,7 @@ def get_user_info(access_token):
 This is the core of the secure authentication flow. The `get_access_token` function performs the critical backend token exchange. It takes the temporary `code` from the frontend and sends it to the ClassLink `/token` endpoint, along with the application's secret credentials, to receive a real `access_token`. The `get_user_info` function then uses that token to securely fetch the logged-in user's definitive `tenantId` and `sourcedId` from the `/my/info` endpoint.
 
 ### Sample 3: Teacher-Specific Roster Enrichment
-```
+```python
 # Inside the get-user-data lambda_handler
 if user_profile.get('role') == 'teacher':
     for course in class_details:
