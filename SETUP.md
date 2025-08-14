@@ -52,7 +52,11 @@ You will need to create **two** separate secrets.
 
 1.  Create a Lambda function named `classlink-data-ingestion` using **Python**.
 2.  Attach `AmazonDynamoDBFullAccess` and `SecretsManagerReadWrite` policies to its execution role.
-3.  Package the code from `backend/data_ingestion/` with its dependencies (`requests`) into a ZIP archive and upload it.
+3.  **Prepare Deployment Package:**
+    -   Create a temporary folder (e.g., `ingestion-package`).
+    -   Copy the `lambda_function.py` from `backend/data_ingestion/` into it.
+    -   Install dependencies into the folder: `pip install -r backend/data_ingestion/requirements.txt -t .`
+    -   Zip the *contents* of the folder and upload it to Lambda.
 4.  Set the function timeout to **2 minutes**.
 5.  Run a manual test to populate your DynamoDB tables.
 
@@ -62,15 +66,17 @@ You will need to create **two** separate secrets.
 
 1.  Create a Lambda function named `get-user-data` using **Python**.
 2.  Attach `AmazonDynamoDBFullAccess` and `SecretsManagerReadWrite` policies to its execution role.
-3.  Package the code from `backend/get_data/` with its dependencies (`requests`) into a ZIP archive and upload it.
+3.  **Prepare Deployment Package:**
+    -   Create a temporary folder (e.g., `get-data-package`).
+    -   Copy the `lambda_function.py` from `backend/get_data/` into it.
+    -   Install dependencies into the folder: `pip install -r backend/get_data/requirements.txt -t .`
+    -   Zip the *contents* of the folder and upload it to Lambda.
 4.  Add an **API Gateway trigger** with the following configuration:
     -   Type: **HTTP API**
     -   Method: **POST**
     -   Path: `/get-user-data`
-    -   Authentication: **None** (The security is handled by the one-time `code` exchange inside the Lambda).
+    -   Authentication: **None**.
 5.  Note the **Invoke URL** for the API's `default` stage.
-
----
 
 ---
 
@@ -86,8 +92,7 @@ You will need to create **two** separate secrets.
     npm install
     ```
 3.  Create an environment file named `.env` in the `frontend` directory.
-4.  Add the full Invoke URL for your `get-user-data` API to this file. This is the only environment variable the frontend needs.
-
+4.  Add the full Invoke URL for your `get-user-data` API to this file:
     ```
     VITE_GET_USER_DATA_ENDPOINT="PASTE_YOUR_API_ENDPOINT_URL_HERE"
     ```
