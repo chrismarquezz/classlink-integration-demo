@@ -1,6 +1,6 @@
 # Best Practices for Security and Efficiency
 
-This document outlines best practices implemented in the ClassLink Integration Demonstrator to ensure security, performance, and maintainability. These principles support the application’s architecture and operation in a production-ready environment.
+This document outlines best practices implemented in the ClassLink Integration Demo to ensure security, performance, and maintainability. These principles support the application’s architecture and operation in a production-ready environment.
 
 ---
 
@@ -18,7 +18,7 @@ This document outlines best practices implemented in the ClassLink Integration D
 
 **Practice:** Each AWS Lambda function is assigned an IAM execution role with only the permissions required to perform its intended function.
 
-Examples:
+**Examples:**
 - The `classlink-data-ingestion` function has write access to DynamoDB and read access to Secrets Manager.
 - The `get-user-data` function has read-only access to DynamoDB.
 
@@ -34,23 +34,25 @@ Examples:
 
 ---
 
-### 4. Backend-Only Data Access
+## II. Data Architecture Best Practices
 
-**Practice:** The frontend does not connect directly to DynamoDB or any data source. All data is accessed via a secure AWS Lambda endpoint behind API Gateway.
+### 1. Composite Keys for Multi-Tenancy
 
-**Benefit:** Eliminates the risk of direct database exposure. Ensures all data requests are controlled, validated, and logged.
+**Practice:** A composite key, formed by concatenating the `tenantId` and `sourcedId` (`tenantId_sourcedId`), is used as the primary `userId` in the DynamoDB tables.
 
----
-
-### 5. Environment-Specific Frontend Configuration
-
-**Practice:** The frontend uses Vite `.env` files (e.g., `.env.local`) to store API URLs and other configuration variables. These files are excluded from source control via `.gitignore`.
-
-**Benefit:** Allows secure and flexible environment configuration across development, staging, and production environments without code changes.
+**Benefit:** The `sourcedId` from the Roster Server API is only unique *within* a specific tenant (e.g., a school district). This composite key strategy creates a globally unique identifier for every user across all possible tenants, preventing data collisions and ensuring data integrity.
 
 ---
 
-## II. Efficiency and Maintainability Best Practices
+### 2. Data Isolation for Multiple Tenants
+
+**Practice:** For applications designed to handle data from multiple tenants simultaneously, the recommended best practice is to segregate data into separate DynamoDB tables for each tenant.
+
+**Benefit:** This ensures strict data isolation and security, preventing any possibility of one tenant's data being accidentally exposed to another.
+
+---
+
+## III. Efficiency and Maintainability Best Practices
 
 ### 1. Serverless Architecture
 
@@ -60,37 +62,5 @@ Examples:
 - **Cost-efficient:** Compute is charged only during function execution.
 - **Scalable:** Functions scale automatically with traffic volume.
 - **Low maintenance:** No server provisioning or patching required.
-
----
-
-### 2. Efficient Batch Writes to DynamoDB
-
-**Practice:** The ingestion pipeline uses DynamoDB’s `batch_writer()` to perform high-volume inserts during data sync from ClassLink.
-
-**Benefit:** Reduces latency and handles retry logic automatically for failed write operations, improving throughput and resilience.
-
----
-
-### 3. Pagination for Scalable API Requests
-
-**Practice:** ClassLink API endpoints that return large datasets (e.g., `/v2/users`) are accessed using offset-based pagination (e.g., `?limit=1000&offset=2000`).
-
-**Benefit:** Supports controlled, chunked data ingestion and prevents timeouts or memory overflow during synchronization.
-
----
-
-### 4. Component-Based Frontend UI
-
-**Practice:** The React application is composed of modular components (`TeacherDashboard`, `StudentDashboard`, `Modal`, etc.).
-
-**Benefit:** Promotes code reuse, testability, and maintainability. Each component has a single responsibility and can be updated independently.
-
----
-
-### 5. Role-Based Rendering and Data Fetching
-
-**Practice:** The backend returns only the data relevant to the authenticated user’s role (student or teacher). For teachers, class rosters are included.
-
-**Benefit:** Improves efficiency and privacy. Reduces the volume of frontend-rendered data while tailoring the UI experience per user type.
 
 ---
