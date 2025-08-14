@@ -6,193 +6,156 @@ This document highlights key code snippets from the project and explains their p
 
 ## 1. Backend: Data Ingestion Lambda (`classlink-data-ingestion`)
 
-This serverless function is responsible for populating the database with data from the ClassLink Roster Server API.
+This function is a server-to-server process that syncs the roster database.
 
-### Sample 1: Securely Fetching API Credentials
+### Sample 1: Creating a Composite User ID for Multi-Tenancy
 
 ```python
-import boto3
-import json
+# Inside the data ingestion lambda_handler
+users_data = fetch_data(base_url, access_token, '/users')
+items_written_users = 0
+with users_table.batch_writer() as batch:
+    for user in users_data:
+        sourced_id = user.get('sourcedId')
+        # The tenantId is extracted from the user's primary organization
+        orgs = user.get('orgs')
+        tenant_id = orgs[0].get('sourcedId') if orgs and len(orgs) > 0 else None
 
-secrets_manager = boto3.client('secretsmanager')
-
-def get_api_details():
-    """Retrieves API details from AWS Secrets Manager."""
-    secret_name = "classlink-api-credentials"
-    print("Getting API details from Secrets Manager...")
-    response = secrets_manager.get_secret_value(SecretId=secret_name)
-    secret = json.loads(response['SecretString'])
-    print("API details retrieved successfully.")
-    return secret['base_url'], secret['access_token']
+        if sourced_id and tenant_id and user.get('role'):
+            # The composite key ensures every user is globally unique
+            composite_user_id = f"{tenant_id}_{sourced_id}"
+            batch.put_item(
+                Item={
+                    'userId': composite_user_id,
+                    'sourcedId': sourced_id,
+                    'tenantId': tenant_id,
+                    # ... other user attributes
+                }
+            )
+            items_written_users += 1
+print(f"Users table populated with {items_written_users} items.")
 ```
 
-**Explanation:**  
-This function demonstrates a critical security best practice. Instead of hardcoding the API `access_token` or `base_url` in the source code, it retrieves them at runtime from **AWS Secrets Manager**. The `boto3` library (the AWS SDK for Python) is used to make a secure call to Secrets Manager. The function's IAM role grants it permission to perform this action, ensuring that credentials are kept safe and out of version control.
+### Explanation:
+This snippet solves a critical data integrity problem. The sourcedId from the Roster Server API is only unique within a specific tenant (a school district). To create a globally unique primary key for our database, we combine the tenantId (extracted from the user's primary organization) with their sourcedId. This composite key (tenantId_sourcedId) ensures that we can accurately store and retrieve data for users from any number of different tenants without conflicts.
 
 ---
 
-### Sample 2: Populating DynamoDB Efficiently
+## 2. Backend: Secure User API (`get-user-data`)
 
-```python
-import boto3
+This function handles the user login flow and fetches data for the authenticated user.
 
-dynamodb = boto3.resource('dynamodb')
-users_table = dynamodb.Table('Users')
-
-def lambda_handler(event, context):
-    # ... (fetching logic is above) ...
-    users_data = users_response.get('users', [])
-    print(f"Populating {len(users_data)} users into DynamoDB...")
-    
-    with users_table.batch_writer() as batch:
-        for user in users_data:
-            if user.get('sourcedId') and user.get('role'):
-                batch.put_item(
-                    Item={
-                        'userId': user.get('sourcedId'),
-                        'role': user.get('role'),
-                        'firstName': user.get('givenName', 'N/A'),
-                        'lastName': user.get('familyName', 'N/A'),
-                        'email': user.get('email', 'N/A')
-                    }
-                )
-    print("Users table populated.")
-```
-
-**Explanation:**  
-This snippet uses DynamoDB’s `batch_writer()` to efficiently insert multiple user records in one operation. It automatically handles retries and batch size limits under the hood. Optional fields like `firstName` or `email` are safely handled with `.get(..., 'N/A')` in case they're missing from the API response. This improves robustness and prevents crashes on missing data.
-
----
-
-## 2. Backend: Authentication + Roster Retrieval Lambda (`get-user-data`)
-
-This function handles the ClassLink OAuth flow and returns user-specific class and enrollment data.
-
-### Sample 3: Exchanging Code for Token and Fetching User Info
+### Sample 2: The OAuth 2.0 Token Exchange
 
 ```python
 def get_access_token(code, client_id, client_secret):
-    token_url = "https://launchpad.classlink.com/oauth2/v2/token"
-    redirect_uri = "http://localhost:5173/callback"
+    """Exchanges a one-time code for an access token."""
+    token_url = "[https://launchpad.classlink.com/oauth2/v2/token](https://launchpad.classlink.com/oauth2/v2/token)"
+    launch_url = "..." # The full authorization URL
     
     payload = {
         'code': code,
         'client_id': client_id,
         'client_secret': client_secret,
         'grant_type': 'authorization_code',
-        'launch_url': f"https://launchpad.classlink.com/oauth2/v2/auth?redirect_uri={redirect_uri}"
+        'launch_url': launch_url 
     }
-
+    
     response = requests.post(token_url, data=payload)
     response.raise_for_status()
     return response.json()['access_token']
 
 def get_user_info(access_token):
+    """Uses an access token to get the user's info."""
+    info_url = "[https://nodeapi.classlink.com/v2/my/info](https://nodeapi.classlink.com/v2/my/info)"
     headers = {'Authorization': f'Bearer {access_token}'}
-    response = requests.get("https://nodeapi.classlink.com/v2/my/info", headers=headers)
+    response = requests.get(info_url, headers=headers)
     response.raise_for_status()
     return response.json()
 ```
+### Explanation:
+This is the core of the secure authentication flow. The get_access_token function performs the critical backend token exchange. It takes the temporary code from the frontend and sends it to the ClassLink /token endpoint, along with the application's secret credentials, to receive a real access_token. The get_user_info function then uses that token to securely fetch the logged-in user's definitive tenantId and sourcedId from the /my/info endpoint.
 
-**Explanation:**  
-This shows how we implement OAuth 2.0 **authorization code exchange** manually (instead of relying on AWS Cognito). After the frontend receives an authorization code, this backend exchanges it for an access token and uses that token to fetch user information from ClassLink. These values (e.g. `sourcedId`, `tenantId`) are used to construct the unique user ID in the DynamoDB schema.
-
----
-
-### Sample 4: Teacher-Specific Roster Enrichment
-
-```python
+### Sample 3: Teacher-Specific Roster Enrichment
+```
+# Inside the get-user-data lambda_handler
 if user_profile.get('role') == 'teacher':
     for course in class_details:
+        # Query the GSI to find all enrollments for a specific class
         roster_response = enrollments_table.query(
             IndexName='classId-userId-index',
             KeyConditionExpression=Key('classId').eq(course['classId'])
         )
         roster = roster_response.get('Items', [])
         
-        # Enrich with names
-        for student in roster:
-            student_profile = users_table.get_item(Key={'userId': student['userId']}).get('Item', {})
-            student['firstName'] = student_profile.get('firstName', 'Unknown')
-            student['lastName'] = student_profile.get('lastName', 'Unknown')
+        # Enrich the roster with student names
+        for student_enrollment in roster:
+            user_id = student_enrollment.get('userId')
+            if user_id:
+                user_resp = users_table.get_item(Key={'userId': user_id})
+                user_item = user_resp.get('Item', {})
+                student_enrollment['firstName'] = user_item.get('firstName', 'Unknown')
+                student_enrollment['lastName'] = user_item.get('lastName', 'Unknown')
 
         course['roster'] = roster
 ```
-
-**Explanation:**  
-This logic enriches the teacher’s roster view with human-readable names for each student. After retrieving all student IDs enrolled in a class, there is a fetch for their individual profiles from the `Users` table and attach the `firstName` and `lastName` fields. This allows the frontend to display meaningful student information, not just raw IDs.
+### Explanation:
+This logic provides a better user experience for teachers. After fetching a teacher's classes, the code checks if the user's role is teacher. If it is, it performs an additional query for each class to get the full student roster. It then enriches this roster by looking up each student's first and last name from the Users table. This ensures the frontend can display a meaningful roster with names, not just IDs.
 
 ---
 
 ## 3. Frontend: React Application
 
-The frontend is a Vite-powered React SPA that consumes the backend’s JSON response and renders dashboards based on the user's role.
-
----
-
-### Sample 5: Fetching Data After ClassLink OAuth Redirect
+### Sample 4: Handling the SSO Redirect
 
 ```jsx
+// Inside App.jsx
 useEffect(() => {
-  const code = new URLSearchParams(window.location.search).get("code");
-  if (!code) return;
+  const API_URL = import.meta.env.VITE_SECURE_API_URL;
 
-  const fetchUserData = async () => {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/get-user-data`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code }),
-    });
-
-    const data = await response.json();
-    setDashboardData(data);
+  const exchangeCodeForData = async (code) => {
+    setLoading(true);
+    try {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: code }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to authenticate');
+      }
+      const data = await response.json();
+      setUser(data);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      // Clean the code from the URL so it's not used again
+      window.history.replaceState({}, document.title, window.location.pathname);
+      setLoading(false);
+    }
   };
 
-  fetchUserData();
-}, []);
+  const urlParams = new URLSearchParams(window.location.search);
+  const code = urlParams.get('code');
+
+  if (code) {
+    exchangeCodeForData(code);
+  } else {
+    setLoading(false);
+  }
+}, []); // Empty array ensures this runs only once on page load
 ```
+### Explanation:
+This React useEffect hook handles the entire post-login redirect flow. When the component first loads, it checks the browser's URL for a code query parameter. If one is found, it immediately sends that code to our secure backend API in a POST request. The backend then completes the token exchange and returns the user's specific data, which is used to render the dashboard. This hook is the critical link between the frontend and the backend in the authentication process.
 
-**Explanation:**  
-This React `useEffect` hook runs once on page load and checks the URL for an authorization `code` (returned from ClassLink). It sends the code to the backend to retrieve user data. The resulting dashboard data includes the user profile, classes, and enrollments—all ready to be rendered.
 
----
 
-### Sample 6: Teacher Roster Modal
 
-```jsx
-<Modal title={`Student Roster for ${rosterClass?.className}`}>
-  <table className="class-table">
-    <thead>
-      <tr>
-        <th>Student Name</th>
-        <th>Student ID</th>
-      </tr>
-    </thead>
-    <tbody>
-      {rosterClass?.roster?.map(student => (
-        <tr key={student.userId}>
-          <td>{student.firstName} {student.lastName}</td>
-          <td>{student.userId}</td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-</Modal>
-```
 
-**Explanation:**  
-This frontend component dynamically renders the roster of a selected class in a modal. The backend already attached `firstName` and `lastName` to each student in the `roster` array, so the frontend can cleanly display the full name alongside the user ID.
 
----
 
-## Summary
 
-This project demonstrates:
 
-- Secure credential handling via AWS Secrets Manager.
-- Efficient serverless data ingestion using `batch_writer`.
-- Manual OAuth 2.0 authentication with ClassLink.
-- Dynamic role-based rendering with React.
-- Clean separation between frontend and backend responsibilities.
 
-See [README.md](./README.md) and [SETUP.md](./SETUP.md) for architecture and deployment details.
+
+
